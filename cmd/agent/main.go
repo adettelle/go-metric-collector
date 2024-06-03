@@ -27,6 +27,8 @@ func sendMetric(name string, value float64, metricType string) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("response is not OK, status: %d", resp.StatusCode)
 	}
