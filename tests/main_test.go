@@ -33,6 +33,7 @@ func TestAddCounterMetric(t *testing.T) {
 	ms.AddCounterMetric(name, value)
 	val2, err := ms.GetCounterMetric(name)
 	assert.Equal(t, int64(1050), val2)
+	assert.True(t, err)
 
 	// проверка получения несущ-ей метрики
 	unrealName := "UnrealMetric"
@@ -68,6 +69,7 @@ func TestAddGaugeMetric(t *testing.T) {
 	ms.AddGaugeMetric(name, value)
 	val2, err := ms.GetGaugeMetric(name)
 	assert.Equal(t, value, val2) // при добавлении сущ-ей метрики метрика заменятеся на новую
+	assert.True(t, err)
 
 	// проверка получения несущ-ей метрики
 	unrealName := "UnrealMetric"
@@ -121,6 +123,7 @@ func TestPostCounterMetric(t *testing.T) {
 	request.SetPathValue("metric_type", m0.metricType)
 	request.SetPathValue("metric_name", m0.metricName)
 	request.SetPathValue("metric_value", m0.metricValue)
+	defer request.Body.Close()
 
 	testPostMetric(t, request, http.StatusOK, "Created")
 
