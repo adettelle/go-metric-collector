@@ -8,19 +8,19 @@ import (
 	store "github.com/adettelle/go-metric-collector/internal/storage"
 )
 
-type MetricApi struct {
+type MetricAPI struct {
 	Storage store.Storage
 }
 
-func NewMetricAPI(storage store.Storage) *MetricApi {
-	return &MetricApi{
+func NewMetricAPI(storage store.Storage) *MetricAPI {
+	return &MetricAPI{
 		Storage: storage,
 	}
 }
 
 // CreateMetric adds metric into MemStorage
 // http://localhost:8080/update/counter/someMetric/527
-func (metricApi *MetricApi) CreateMetric(w http.ResponseWriter, r *http.Request) {
+func (MetricAPI *MetricAPI) CreateMetric(w http.ResponseWriter, r *http.Request) {
 	// log.Println("Req:_________________", r)
 	metricNameToSearch := r.PathValue("metric_name")
 	metricValueToSearch := r.PathValue("metric_value")
@@ -34,7 +34,7 @@ func (metricApi *MetricApi) CreateMetric(w http.ResponseWriter, r *http.Request)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		metricApi.Storage.AddGaugeMetric(metricNameToSearch, value)
+		MetricAPI.Storage.AddGaugeMetric(metricNameToSearch, value)
 
 		w.WriteHeader(http.StatusOK)
 		_, err = w.Write([]byte("Created"))
@@ -49,7 +49,7 @@ func (metricApi *MetricApi) CreateMetric(w http.ResponseWriter, r *http.Request)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		metricApi.Storage.AddCounterMetric(metricNameToSearch, value)
+		MetricAPI.Storage.AddCounterMetric(metricNameToSearch, value)
 
 		w.WriteHeader(http.StatusOK)
 		_, err = w.Write([]byte("Created"))
@@ -57,7 +57,7 @@ func (metricApi *MetricApi) CreateMetric(w http.ResponseWriter, r *http.Request)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		fmt.Println(metricApi.Storage) // {map[] map[someMetric:[527]]}
+		fmt.Println(MetricAPI.Storage) // {map[] map[someMetric:[527]]}
 
 	default:
 		w.WriteHeader(http.StatusBadRequest)
