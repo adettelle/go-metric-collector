@@ -123,16 +123,14 @@ func TestPostCounterMetric(t *testing.T) {
 	request.SetPathValue("metric_type", m0.metricType)
 	request.SetPathValue("metric_name", m0.metricName)
 	request.SetPathValue("metric_value", m0.metricValue)
-	defer request.Body.Close()
 
-	testPostMetric(t, request, http.StatusOK, "Created")
-
+	res := testPostMetric(t, request, http.StatusOK, "Created")
+	defer res.Body.Close()
 }
 
 func testPostMetric(t *testing.T, request *http.Request, expectedStatus int, expectedBody string) *http.Response {
 	metricStore := storage.NewMemStorage()
 	mAPI := handlers.NewMetricApi(metricStore)
-
 	w := httptest.NewRecorder()
 	mAPI.CreateMetric(w, request)
 
