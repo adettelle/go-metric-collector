@@ -130,12 +130,11 @@ func TestPostCounterMetric(t *testing.T) {
 
 func testPostMetric(t *testing.T, request *http.Request, expectedStatus int, expectedBody string) *http.Response {
 	metricStore := storage.NewMemStorage()
-	mAPI := handlers.NewMetricApi(metricStore)
+	mAPI := handlers.NewMetricAPI(metricStore)
 	w := httptest.NewRecorder()
 	mAPI.CreateMetric(w, request)
 
 	res := w.Result()
-	defer res.Body.Close()
 	assert.Equal(t, expectedStatus, res.StatusCode)
 
 	bodyStr, _ := io.ReadAll(res.Body)

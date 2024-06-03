@@ -12,7 +12,7 @@ type MetricApi struct {
 	Storage store.Storage
 }
 
-func NewMetricApi(storage store.Storage) *MetricApi {
+func NewMetricAPI(storage store.Storage) *MetricApi {
 	return &MetricApi{
 		Storage: storage,
 	}

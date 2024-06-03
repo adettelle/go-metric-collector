@@ -8,11 +8,9 @@ import (
 	store "github.com/adettelle/go-metric-collector/internal/storage"
 )
 
-var storage = store.NewMemStorage()
-
 func main() {
 	ms := store.NewMemStorage()
-	mAPI := handlers.NewMetricApi(ms)
+	mAPI := handlers.NewMetricAPI(ms)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /update/{metric_type}/{metric_name}/{metric_value}", mAPI.CreateMetric)
