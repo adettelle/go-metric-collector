@@ -37,7 +37,11 @@ func (metricApi *MetricApi) CreateMetric(w http.ResponseWriter, r *http.Request)
 		metricApi.Storage.AddGaugeMetric(metricNameToSearch, value)
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Created"))
+		_, err = w.Write([]byte("Created"))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
 	case metricTypeToSearch == "counter":
 		value, err := strconv.ParseInt(metricValueToSearch, 10, 64)
@@ -48,12 +52,20 @@ func (metricApi *MetricApi) CreateMetric(w http.ResponseWriter, r *http.Request)
 		metricApi.Storage.AddCounterMetric(metricNameToSearch, value)
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Created"))
+		_, err = w.Write([]byte("Created"))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		fmt.Println(metricApi.Storage) // {map[] map[someMetric:[527]]}
 
 	default:
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("No such metric"))
+		_, err := w.Write([]byte("No such metric"))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		return
 	}
 }
