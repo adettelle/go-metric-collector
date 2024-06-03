@@ -12,10 +12,10 @@ var storage = store.NewMemStorage()
 
 func main() {
 	ms := store.NewMemStorage()
-	mApi := handlers.NewMetricApi(ms)
+	mAPI := handlers.NewMetricApi(ms)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /update/{metric_type}/{metric_name}/{metric_value}", mApi.CreateMetric)
+	mux.HandleFunc("POST /update/{metric_type}/{metric_name}/{metric_value}", mAPI.CreateMetric)
 	//http.HandleFunc("POST /update/{metric_type}/{metric_name}/{metric_value}", CreateMetric)
 
 	err := http.ListenAndServe(`:8080`, mux)

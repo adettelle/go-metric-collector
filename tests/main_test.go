@@ -83,44 +83,44 @@ func TestPostCounterMetric(t *testing.T) {
 
 	// }
 	type metric struct {
-		metric_type  string
-		metric_name  string
-		metric_value string
+		metricType  string
+		metricName  string
+		metricValue string
 	}
 	metrics := []metric{
 		{
-			metric_type:  "counter",
-			metric_name:  "C1",
-			metric_value: "123",
+			metricType:  "counter",
+			metricName:  "C1",
+			metricValue: "123",
 		},
 		{
-			metric_type:  "counter",
-			metric_name:  "C2",
-			metric_value: "567",
+			metricType:  "counter",
+			metricName:  "C2",
+			metricValue: "567",
 		},
 		{
-			metric_type:  "gauge",
-			metric_name:  "G1",
-			metric_value: "123",
+			metricType:  "gauge",
+			metricName:  "G1",
+			metricValue: "123",
 		},
 		{
-			metric_type:  "gauge",
-			metric_name:  "G2",
-			metric_value: "456",
+			metricType:  "gauge",
+			metricName:  "G2",
+			metricValue: "456",
 		},
 	}
-	m1 := metrics[0]
-	query := "/update/" + m1.metric_type + "/" + m1.metric_name + m1.metric_value
+	m0 := metrics[0]
+	query := "/update/" + m0.metricType + "/" + m0.metricName + "/" + m0.metricValue
 	// query := "/update/counter/counterMetric/525" // http://localhost:8080
 	request := httptest.NewRequest(http.MethodPost, query, nil)
 
-	// request.SetPathValue("metric_type", "counter")
-	// request.SetPathValue("metric_name", "counterMetric")
-	// request.SetPathValue("metric_value", "525")
+	// request.SetPathValue("metricType", "counter")
+	// request.SetPathValue("metricName", "counterMetric")
+	// request.SetPathValue("metricValue", "525")
 
-	request.SetPathValue("metric_type", m1.metric_type)
-	request.SetPathValue("metric_name", m1.metric_name)
-	request.SetPathValue("metric_value", m1.metric_value)
+	request.SetPathValue("metric_type", m0.metricType)
+	request.SetPathValue("metric_name", m0.metricName)
+	request.SetPathValue("metric_value", m0.metricValue)
 
 	testPostMetric(t, request, http.StatusOK, "Created")
 
@@ -128,10 +128,10 @@ func TestPostCounterMetric(t *testing.T) {
 
 func testPostMetric(t *testing.T, request *http.Request, expectedStatus int, expectedBody string) *http.Response {
 	metricStore := storage.NewMemStorage()
-	mApi := handlers.NewMetricApi(metricStore)
+	mAPI := handlers.NewMetricApi(metricStore)
 
 	w := httptest.NewRecorder()
-	mApi.CreateMetric(w, request)
+	mAPI.CreateMetric(w, request)
 
 	res := w.Result()
 	assert.Equal(t, expectedStatus, res.StatusCode)
