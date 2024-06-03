@@ -5,47 +5,17 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
-	"os"
 	"runtime"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/adettelle/go-metric-collector/internal/storage"
 )
 
-// type appMetrics struct {
-// 	PollCount   int64
-// 	RandomValue float64
-
-// 	Alloc         float64
-// 	BuckHashSys   float64
-// 	Frees         float64
-// 	GCCPUFraction float64
-// 	GCSys         float64
-// 	HeapAlloc     float64
-// 	HeapIdle      float64
-// 	HeapInuse     float64
-// 	HeapObjects   float64
-// 	HeapReleased  float64
-// 	HeapSys       float64
-// 	LastGC        float64
-// 	Lookups       float64
-// 	MCacheInuse   float64
-// 	MCacheSys     float64
-// 	MSpanInuse    float64
-// 	MSpanSys      float64
-// 	Mallocs       float64
-// 	NextGC        float64
-// 	NumForcedGC   float64
-// 	NumGC         float64
-// 	OtherSys      float64
-// 	PauseTotalNs  float64
-// 	StackInuse    float64
-// 	StackSys      float64
-// 	Sys           float64
-// 	TotalAlloc    float64
-// }
+const (
+	reportDelay = 10
+	delay       = 2
+)
 
 func sendMetric(name string, value float64, metricType string) error {
 	url := fmt.Sprintf("http://localhost:8080/update/%s/%s/%v", metricType, name, value)
@@ -91,17 +61,17 @@ func sendAllMetrics(ms *storage.MemStorage) error {
 func main() {
 	metricsStorage := storage.NewMemStorage()
 
-	pollInterval := os.Getenv("POLLINTERVAL")
-	delay, err := strconv.Atoi(pollInterval)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// pollInterval := os.Getenv("POLLINTERVAL")
+	// delay, err := strconv.Atoi(pollInterval)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 
-	reportInterval := os.Getenv("REPORTINTERVAL")
-	reportDelay, err := strconv.Atoi(reportInterval)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// reportInterval := os.Getenv("REPORTINTERVAL")
+	// reportDelay, err := strconv.Atoi(reportInterval)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 
 	var wg sync.WaitGroup
 	wg.Add(1)

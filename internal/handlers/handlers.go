@@ -8,14 +8,10 @@ import (
 	store "github.com/adettelle/go-metric-collector/internal/storage"
 )
 
-// Поскольку Storage - это интерфейс, то ссылки на него быть не должно!!!!
-// А когда был MemStorage, то была ссылка: Storage *store.Storage
 type MetricApi struct {
 	Storage store.Storage
 }
 
-// Поскольку Storage - это интерфейс, то ссылки на него быть не должно!!!!
-// А когда был MEmStorage, то была ссылка: storage *store.MemStorage и
 func NewMetricApi(storage store.Storage) *MetricApi {
 	return &MetricApi{
 		Storage: storage,
