@@ -137,6 +137,7 @@ func testPostMetric(t *testing.T, request *http.Request, expectedStatus int, exp
 	mAPI.CreateMetric(w, request)
 
 	res := w.Result()
+	defer res.Body.Close()
 	assert.Equal(t, expectedStatus, res.StatusCode)
 
 	bodyStr, _ := io.ReadAll(res.Body)
