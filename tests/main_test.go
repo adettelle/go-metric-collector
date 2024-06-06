@@ -185,7 +185,6 @@ func TestGetAllMetrics(t *testing.T) {
 
 	query := "/"
 	w := httptest.NewRecorder()
-	defer w.Result().Body.Close()
 
 	request := httptest.NewRequest(http.MethodGet, query, nil)
 	mAPI.GetAllMetrics(w, request)
@@ -194,7 +193,9 @@ func TestGetAllMetrics(t *testing.T) {
 	body := strings.Join(strings.Fields(w.Body.String()), "")
 	assert.Equal(t, expectedBody, body)
 
+	//nolint:bodyclose
 	assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+
 }
 
 // http://localhost:8080/value/counter/HeapAlloc
@@ -211,6 +212,7 @@ func testGetValue(mType, mName string, mAPI *handlers.MetricAPI) (string, int) {
 
 	mAPI.GetMetricByValue(w, req)
 
+	//nolint:bodyclose
 	return w.Body.String(), w.Result().StatusCode
 }
 func TestGetMetricByValue(t *testing.T) {
