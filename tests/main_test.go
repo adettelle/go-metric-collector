@@ -193,8 +193,10 @@ func TestGetAllMetrics(t *testing.T) {
 	body := strings.Join(strings.Fields(w.Body.String()), "")
 	assert.Equal(t, expectedBody, body)
 
-	//nolint:bodyclose
-	assert.Equal(t, http.StatusOK, w.Result().StatusCode)
+	res := w.Result()
+	defer res.Body.Close()
+
+	assert.Equal(t, http.StatusOK, res.StatusCode)
 
 }
 
@@ -212,8 +214,11 @@ func testGetValue(mType, mName string, mAPI *handlers.MetricAPI) (string, int) {
 
 	mAPI.GetMetricByValue(w, req)
 
-	//nolint:bodyclose
-	return w.Body.String(), w.Result().StatusCode
+	res := w.Result()
+	defer res.Body.Close()
+	code := res.StatusCode
+
+	return w.Body.String(), code
 }
 func TestGetMetricByValue(t *testing.T) {
 	metricStore := storage.NewMemStorage()
