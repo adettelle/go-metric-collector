@@ -228,8 +228,8 @@ func TestGetMetricByValue(t *testing.T) {
 		want   string
 		status int
 	}{
-		{"gauge", "G1", "G1: 123", http.StatusOK},
-		{"counter", "C1", "C1: 579", http.StatusOK},
+		{"gauge", "G1", "123", http.StatusOK},
+		{"counter", "C1", "579", http.StatusOK},
 		// проверим на ошибочный запрос
 		{"count", "a6", "No such metric type", http.StatusNotFound},
 	}

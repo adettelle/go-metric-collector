@@ -81,7 +81,7 @@ func (mAPI *MetricAPI) GetMetricByValue(w http.ResponseWriter, r *http.Request) 
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		_, err := w.Write([]byte(fmt.Sprintf("%v: %v", metricNameToSearch, metric)))
+		_, err := w.Write([]byte(fmt.Sprintf("%v", metric)))
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -92,7 +92,7 @@ func (mAPI *MetricAPI) GetMetricByValue(w http.ResponseWriter, r *http.Request) 
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		_, err := w.Write([]byte(fmt.Sprintf("%v: %v", metricNameToSearch, metric)))
+		_, err := w.Write([]byte(fmt.Sprintf("%v", metric)))
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
