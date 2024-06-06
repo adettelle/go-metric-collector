@@ -156,7 +156,7 @@ const tmpl = `
 
 			<tr>
 				<td>G2</td>
-				<td>456</td> 
+				<td>150984.573</td> 
 			</tr>
 
 		</table>
@@ -181,7 +181,7 @@ func TestGetAllMetrics(t *testing.T) {
 	metricStore.AddCounterMetric("C1", 123)
 	metricStore.AddCounterMetric("C1", 456)
 	metricStore.AddGaugeMetric("G1", 123)
-	metricStore.AddGaugeMetric("G2", 456)
+	metricStore.AddGaugeMetric("G2", 150984.573)
 
 	query := "/"
 	w := httptest.NewRecorder()
@@ -220,7 +220,7 @@ func TestGetMetricByValue(t *testing.T) {
 	metricStore.AddCounterMetric("C1", 123)
 	metricStore.AddCounterMetric("C1", 456)
 	metricStore.AddGaugeMetric("G1", 123)
-	metricStore.AddGaugeMetric("G2", 456)
+	metricStore.AddGaugeMetric("G2", 150984.573)
 
 	var testTable = []struct {
 		mType  string
@@ -229,6 +229,7 @@ func TestGetMetricByValue(t *testing.T) {
 		status int
 	}{
 		{"gauge", "G1", "123", http.StatusOK},
+		{"gauge", "G2", "150984.573", http.StatusOK},
 		{"counter", "C1", "579", http.StatusOK},
 		// проверим на ошибочный запрос
 		{"count", "a6", "No such metric type", http.StatusNotFound},

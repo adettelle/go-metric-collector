@@ -27,7 +27,7 @@ func (MetricAPI *MetricAPI) CreateMetric(w http.ResponseWriter, r *http.Request)
 
 	switch {
 	case metricType == "gauge":
-		value, err := strconv.ParseFloat(metricValue, 32)
+		value, err := strconv.ParseFloat(metricValue, 64)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
