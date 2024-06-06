@@ -1,6 +1,10 @@
 package storage
 
-import "sync"
+import (
+	"html/template"
+	"io"
+	"sync"
+)
 
 // MemStorage is used for storaging metrics
 // MemStorage - это имплементация интерфейса Storage
@@ -64,10 +68,45 @@ func (ms *MemStorage) AddCounterMetric(name string, value int64) {
 	}
 }
 
+func (ms *MemStorage) GetAllMetric(w io.Writer) {
+
+	const tmpl = `
+<html>
+
+	<body>
+		<h1>Gauge metrics</h1>
+    	<table> 
+		{{range $key, $val := .Gauge}}
+     		<tr>
+				<td>{{$key}}</td>
+				<td>{{$val}}</td> 
+			</tr>
+		{{end}}
+		</table>
+
+		<h1>Counter metrics</h1>
+    	<table> 
+		{{range $key, $val := .Counter}}
+     		<tr>
+				<td>{{$key}}</td>
+				<td>{{$val}}</td> 
+			</tr>
+		{{end}}
+		</table>
+	</body>
+
+</html>
+	`
+	t := template.Must(template.New("tmpl").Parse(tmpl))
+
+	t.Execute(w, ms)
+}
+
 // интерфейс для взаимодействия с хранилищем MemStorage и другими хранилищами, напрмер, fileStorage
 type Storage interface {
 	GetGaugeMetric(name string) (float64, bool)
 	GetCounterMetric(name string) (int64, bool)
+	GetAllMetric(w io.Writer)
 	AddGaugeMetric(name string, value float64)
 	AddCounterMetric(name string, value int64)
 }
