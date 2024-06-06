@@ -20,7 +20,7 @@ func NewMetricAPI(storage store.Storage) *MetricAPI {
 
 // CreateMetric adds metric into MemStorage
 // POST http://localhost:8080/update/counter/someMetric/527
-func (MetricAPI *MetricAPI) CreateMetric(w http.ResponseWriter, r *http.Request) {
+func (metricAPI *MetricAPI) CreateMetric(w http.ResponseWriter, r *http.Request) {
 	metricName := r.PathValue("metric_name")
 	metricValue := r.PathValue("metric_value")
 	metricType := r.PathValue("metric_type")
@@ -32,7 +32,7 @@ func (MetricAPI *MetricAPI) CreateMetric(w http.ResponseWriter, r *http.Request)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		MetricAPI.Storage.AddGaugeMetric(metricName, value)
+		metricAPI.Storage.AddGaugeMetric(metricName, value)
 
 		w.WriteHeader(http.StatusOK)
 		_, err = w.Write([]byte("Created"))
@@ -47,7 +47,7 @@ func (MetricAPI *MetricAPI) CreateMetric(w http.ResponseWriter, r *http.Request)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		MetricAPI.Storage.AddCounterMetric(metricName, value)
+		metricAPI.Storage.AddCounterMetric(metricName, value)
 
 		w.WriteHeader(http.StatusOK)
 		_, err = w.Write([]byte("Created"))
@@ -55,7 +55,7 @@ func (MetricAPI *MetricAPI) CreateMetric(w http.ResponseWriter, r *http.Request)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		// fmt.Println(MetricAPI.Storage) // {map[] map[someMetric:[527]]}
+		// fmt.Println(metricAPI.Storage) // {map[] map[someMetric:[527]]}
 
 	default:
 		w.WriteHeader(http.StatusBadRequest)
@@ -70,13 +70,12 @@ func (MetricAPI *MetricAPI) CreateMetric(w http.ResponseWriter, r *http.Request)
 
 // GetMetric gets metric from MemStorage
 // GET http://localhost:8080/value/counter/HeapAlloc
-func (mAPI *MetricAPI) GetMetricByValue(w http.ResponseWriter, r *http.Request) {
+func (metricAPI *MetricAPI) GetMetricByValue(w http.ResponseWriter, r *http.Request) {
 	metricNameToSearch := r.PathValue("metric_name")
 	metricTypeToSearch := r.PathValue("metric_type")
-
 	switch {
 	case metricTypeToSearch == "counter":
-		metric, metricExists := mAPI.Storage.GetCounterMetric(metricNameToSearch)
+		metric, metricExists := metricAPI.Storage.GetCounterMetric(metricNameToSearch)
 		if !metricExists {
 			w.WriteHeader(http.StatusNotFound)
 			return
@@ -87,7 +86,7 @@ func (mAPI *MetricAPI) GetMetricByValue(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 	case metricTypeToSearch == "gauge":
-		metric, metricExists := mAPI.Storage.GetGaugeMetric(metricNameToSearch)
+		metric, metricExists := metricAPI.Storage.GetGaugeMetric(metricNameToSearch)
 		if !metricExists {
 			w.WriteHeader(http.StatusNotFound)
 			return
@@ -109,6 +108,6 @@ func (mAPI *MetricAPI) GetMetricByValue(w http.ResponseWriter, r *http.Request) 
 
 }
 
-func (mAPI *MetricAPI) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
-	mAPI.Storage.GetAllMetric(w)
+func (metricAPI *MetricAPI) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
+	metricAPI.Storage.GetAllMetric(w)
 }

@@ -177,7 +177,7 @@ const tmpl = `
 
 func TestGetAllMetrics(t *testing.T) {
 	metricStore := storage.NewMemStorage()
-	mAPI := handlers.NewMetricAPI(metricStore)
+	metricAPI := handlers.NewMetricAPI(metricStore)
 	metricStore.AddCounterMetric("C1", 123)
 	metricStore.AddCounterMetric("C1", 456)
 	metricStore.AddGaugeMetric("G1", 123)
@@ -187,7 +187,7 @@ func TestGetAllMetrics(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	request := httptest.NewRequest(http.MethodGet, query, nil)
-	mAPI.GetAllMetrics(w, request)
+	metricAPI.GetAllMetrics(w, request)
 
 	expectedBody := strings.Join(strings.Fields(tmpl), "")
 	body := strings.Join(strings.Fields(w.Body.String()), "")
