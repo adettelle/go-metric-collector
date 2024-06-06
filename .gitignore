@@ -23,3 +23,7 @@ vendor/
 # IDEs directories
 .idea
 .vscode
+
+example.html
+Some.html
+Makefile
