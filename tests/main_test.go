@@ -42,7 +42,7 @@ var metrics = []metric{
 	},
 }
 
-var mStorage = storage.NewMemStorage()
+// var mStorage = storage.NewMemStorage()
 
 func TestAddCounterMetric(t *testing.T) {
 	ms := storage.NewMemStorage()
@@ -185,6 +185,8 @@ func TestGetAllMetrics(t *testing.T) {
 
 	query := "/"
 	w := httptest.NewRecorder()
+	defer w.Result().Body.Close()
+
 	request := httptest.NewRequest(http.MethodGet, query, nil)
 	mAPI.GetAllMetrics(w, request)
 
@@ -199,6 +201,7 @@ func TestGetAllMetrics(t *testing.T) {
 func testGetValue(mType, mName string, mAPI *handlers.MetricAPI) (string, int) {
 
 	w := httptest.NewRecorder()
+	//defer w.Result().Body.Close()
 
 	path := fmt.Sprintf("/value/%s/%s", mType, mName)
 	req := httptest.NewRequest(http.MethodGet, path, nil)
@@ -207,6 +210,7 @@ func testGetValue(mType, mName string, mAPI *handlers.MetricAPI) (string, int) {
 	req.SetPathValue("metric_name", mName)
 
 	mAPI.GetMetricByValue(w, req)
+
 	return w.Body.String(), w.Result().StatusCode
 }
 func TestGetMetricByValue(t *testing.T) {

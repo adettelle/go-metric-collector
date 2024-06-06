@@ -3,6 +3,7 @@ package storage
 import (
 	"html/template"
 	"io"
+	"log"
 	"sync"
 )
 
@@ -99,7 +100,11 @@ func (ms *MemStorage) GetAllMetric(w io.Writer) {
 	`
 	t := template.Must(template.New("tmpl").Parse(tmpl))
 
-	t.Execute(w, ms)
+	err := t.Execute(w, ms)
+	if err != nil {
+		log.Println("error:", err)
+		return
+	}
 }
 
 // интерфейс для взаимодействия с хранилищем MemStorage и другими хранилищами, напрмер, fileStorage

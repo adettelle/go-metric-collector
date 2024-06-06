@@ -81,14 +81,22 @@ func (mAPI *MetricAPI) GetMetricByValue(w http.ResponseWriter, r *http.Request) 
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		w.Write([]byte(fmt.Sprintf("%v: %v", metricNameToSearch, metric)))
+		_, err := w.Write([]byte(fmt.Sprintf("%v: %v", metricNameToSearch, metric)))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	case metricTypeToSearch == "gauge":
 		metric, metricExists := mAPI.Storage.GetGaugeMetric(metricNameToSearch)
 		if !metricExists {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		w.Write([]byte(fmt.Sprintf("%v: %v", metricNameToSearch, metric)))
+		_, err := w.Write([]byte(fmt.Sprintf("%v: %v", metricNameToSearch, metric)))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	default:
 		w.WriteHeader(http.StatusNotFound)
 		_, err := w.Write([]byte("No such metric type"))
