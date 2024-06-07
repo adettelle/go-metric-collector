@@ -49,6 +49,6 @@ func ensureAddrFLagIsCorrect(addr string) {
 
 	_, err = strconv.Atoi(port)
 	if err != nil {
-		log.Fatal(fmt.Errorf("Invalid port: '%s'", port))
+		log.Fatal(fmt.Errorf("invalid port: '%s'", port))
 	}
 }
