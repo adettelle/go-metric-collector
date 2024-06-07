@@ -1,24 +1,22 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"math/rand"
+	"net"
 	"net/http"
 	"runtime"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/adettelle/go-metric-collector/internal/storage"
 )
 
-const (
-	reportDelay = 10
-	delay       = 2
-)
-
-func sendMetric(name string, value float64, metricType string) error {
-	url := fmt.Sprintf("http://localhost:8080/update/%s/%s/%v", metricType, name, value)
+func sendMetric(addr string, metricType string, name string, value float64) error {
+	url := fmt.Sprintf("http://%s/update/%s/%s/%v", addr, metricType, name, value)
 	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
 		return err
@@ -35,9 +33,9 @@ func sendMetric(name string, value float64, metricType string) error {
 	return nil
 }
 
-func sendAllMetrics(ms *storage.MemStorage) error {
+func sendAllMetrics(ms *storage.MemStorage, addr string) error {
 	for name, value := range ms.Gauge {
-		err := sendMetric(name, value, "gauge")
+		err := sendMetric(addr, "gauge", name, value)
 		if err != nil {
 			log.Printf("Couldn't send metric, %s", err.Error())
 			return err
@@ -47,7 +45,7 @@ func sendAllMetrics(ms *storage.MemStorage) error {
 	}
 
 	for name, value := range ms.Counter {
-		err := sendMetric(name, float64(value), "counter")
+		err := sendMetric(addr, "counter", name, float64(value))
 		if err != nil {
 			log.Printf("Couldn't send metric, %s", err.Error())
 			return err
@@ -63,32 +61,27 @@ func sendAllMetrics(ms *storage.MemStorage) error {
 func main() {
 	metricsStorage := storage.NewMemStorage()
 
-	// pollInterval := os.Getenv("POLLINTERVAL")
-	// delay, err := strconv.Atoi(pollInterval)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
+	addr := flag.String("a", "localhost:8080", "Net address localhost:port")
+	pollDelay := flag.Int("p", 2, "metrics poll interval, seconds")
+	reportDelay := flag.Int("r", 10, "metrics report interval, seconds")
+	flag.Parse()
 
-	// reportInterval := os.Getenv("REPORTINTERVAL")
-	// reportDelay, err := strconv.Atoi(reportInterval)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
+	ensureAddrFLagIsCorrect(*addr)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	go sendLoop(time.Duration(reportDelay), metricsStorage)
-	go retrieveLoop(time.Duration(delay), metricsStorage)
+	go sendLoop(time.Duration(*reportDelay), metricsStorage, *addr)
+	go retrieveLoop(time.Duration(*pollDelay), metricsStorage)
 	wg.Wait()
 }
 
 // sendLoop sends all metrics to the server (MemStorage) with delay
-func sendLoop(delay time.Duration, metricsStorage *storage.MemStorage) {
+func sendLoop(delay time.Duration, metricsStorage *storage.MemStorage, addr string) {
 	ticker := time.NewTicker(time.Second * delay)
 
 	for range ticker.C {
 		log.Println("Sending metrics")
-		err := sendAllMetrics(metricsStorage)
+		err := sendAllMetrics(metricsStorage, addr)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -142,4 +135,16 @@ func retrieveAllMetrics(metricsStorage *storage.MemStorage) {
 	metricsStorage.AddGaugeMetric("StackSys", float64(m.StackSys))
 	metricsStorage.AddGaugeMetric("Sys", float64(m.Sys))
 	metricsStorage.AddGaugeMetric("TotalAlloc", float64(m.TotalAlloc))
+}
+
+func ensureAddrFLagIsCorrect(addr string) {
+	_, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = strconv.Atoi(port)
+	if err != nil {
+		log.Fatal(fmt.Errorf("invalid port: '%s'", port))
+	}
 }
