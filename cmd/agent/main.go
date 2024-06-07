@@ -62,8 +62,8 @@ func main() {
 	metricsStorage := storage.NewMemStorage()
 
 	addr := flag.String("a", "localhost:8080", "Net address localhost:port")
-	pollDelay := flag.Int("pollInterval", 2, "частота опроса метрик из пакета runtime")
-	reportDelay := flag.Int("reportInterval", 10, "частота опроса метрик из пакета runtime")
+	pollDelay := flag.Int("p", 2, "metrics poll interval, seconds")
+	reportDelay := flag.Int("r", 10, "metrics report interval, seconds")
 	flag.Parse()
 
 	ensureAddrFLagIsCorrect(*addr)
