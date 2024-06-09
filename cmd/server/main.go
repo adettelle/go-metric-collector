@@ -1,14 +1,12 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
-	"strconv"
 
 	"github.com/adettelle/go-metric-collector/internal/handlers"
+	"github.com/adettelle/go-metric-collector/internal/server"
 	store "github.com/adettelle/go-metric-collector/internal/storage"
 	"github.com/go-chi/chi/v5"
 )
@@ -19,9 +17,14 @@ type NetAddress struct {
 }
 
 func main() {
-	addr := flag.String("a", "localhost:8080", "Net address localhost:port")
-	flag.Parse()
-	ensureAddrFLagIsCorrect(*addr)
+
+	config, err := server.NewConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
+	// addr := flag.String("a", "localhost:8080", "Net address localhost:port")
+	// flag.Parse()
+	// ensureAddrFLagIsCorrect(*addr)
 
 	ms := store.NewMemStorage()
 	mAPI := handlers.NewMetricAPI(ms)
@@ -33,22 +36,10 @@ func main() {
 	r.Get("/value/{metric_type}/{metric_name}", mAPI.GetMetricByValue)
 	r.Get("/", mAPI.GetAllMetrics)
 
-	fmt.Printf("Starting server on %s\n", *addr)
+	fmt.Printf("Starting server on %s\n", config.Address)
 
-	err := http.ListenAndServe(*addr, r) // `:8080`
+	err = http.ListenAndServe(config.Address, r) // `:8080`
 	if err != nil {
 		log.Fatal(err)
-	}
-}
-
-func ensureAddrFLagIsCorrect(addr string) {
-	_, port, err := net.SplitHostPort(addr)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	_, err = strconv.Atoi(port)
-	if err != nil {
-		log.Fatal(fmt.Errorf("invalid port: '%s'", port))
 	}
 }
