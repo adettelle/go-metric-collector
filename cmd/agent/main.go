@@ -1,17 +1,15 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"math/rand"
-	"net"
 	"net/http"
 	"runtime"
-	"strconv"
 	"sync"
 	"time"
 
+	"github.com/adettelle/go-metric-collector/internal/agent"
 	"github.com/adettelle/go-metric-collector/internal/storage"
 )
 
@@ -60,18 +58,22 @@ func sendAllMetrics(ms *storage.MemStorage, addr string) error {
 // POLLINTERVAL=2 REPORTINTERVAL=10 go run ./cmd/agent/
 func main() {
 	metricsStorage := storage.NewMemStorage()
+	config, err := agent.NewConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	addr := flag.String("a", "localhost:8080", "Net address localhost:port")
-	pollDelay := flag.Int("p", 2, "metrics poll interval, seconds")
-	reportDelay := flag.Int("r", 10, "metrics report interval, seconds")
-	flag.Parse()
+	// addr := flag.String("a", "localhost:8080", "Net address localhost:port")
+	// pollDelay := flag.Int("p", 2, "metrics poll interval, seconds")
+	// reportDelay := flag.Int("r", 10, "metrics report interval, seconds")
+	// flag.Parse()
 
-	ensureAddrFLagIsCorrect(*addr)
+	// ensureAddrFLagIsCorrect(*addr)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	go sendLoop(time.Duration(*reportDelay), metricsStorage, *addr)
-	go retrieveLoop(time.Duration(*pollDelay), metricsStorage)
+	go sendLoop(time.Duration(config.ReportInterval), metricsStorage, config.Address)
+	go retrieveLoop(time.Duration(config.PollInterval), metricsStorage)
 	wg.Wait()
 }
 
@@ -137,14 +139,14 @@ func retrieveAllMetrics(metricsStorage *storage.MemStorage) {
 	metricsStorage.AddGaugeMetric("TotalAlloc", float64(m.TotalAlloc))
 }
 
-func ensureAddrFLagIsCorrect(addr string) {
-	_, port, err := net.SplitHostPort(addr)
-	if err != nil {
-		log.Fatal(err)
-	}
+// func ensureAddrFLagIsCorrect(addr string) {
+// 	_, port, err := net.SplitHostPort(addr)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
 
-	_, err = strconv.Atoi(port)
-	if err != nil {
-		log.Fatal(fmt.Errorf("invalid port: '%s'", port))
-	}
-}
+// 	_, err = strconv.Atoi(port)
+// 	if err != nil {
+// 		log.Fatal(fmt.Errorf("invalid port: '%s'", port))
+// 	}
+// }
