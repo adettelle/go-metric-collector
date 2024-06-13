@@ -6,27 +6,19 @@ import (
 	"net/http"
 
 	"github.com/adettelle/go-metric-collector/internal/handlers"
-	"github.com/adettelle/go-metric-collector/internal/server"
-	store "github.com/adettelle/go-metric-collector/internal/storage"
+	"github.com/adettelle/go-metric-collector/internal/server/config"
+	"github.com/adettelle/go-metric-collector/internal/storage/memstorage"
 	"github.com/go-chi/chi/v5"
 )
 
-type NetAddress struct {
-	Host string
-	Port int
-}
-
 func main() {
 
-	config, err := server.NewConfig()
+	config, err := config.New()
 	if err != nil {
 		log.Fatal(err)
 	}
-	// addr := flag.String("a", "localhost:8080", "Net address localhost:port")
-	// flag.Parse()
-	// ensureAddrFLagIsCorrect(*addr)
 
-	ms := store.NewMemStorage()
+	ms := memstorage.New()
 	mAPI := handlers.NewMetricAPI(ms)
 
 	r := chi.NewRouter()
@@ -38,7 +30,7 @@ func main() {
 
 	fmt.Printf("Starting server on %s\n", config.Address)
 
-	err = http.ListenAndServe(config.Address, r) // `:8080`
+	err = http.ListenAndServe(config.Address, r)
 	if err != nil {
 		log.Fatal(err)
 	}

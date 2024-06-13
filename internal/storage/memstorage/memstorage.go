@@ -1,4 +1,4 @@
-package storage
+package memstorage
 
 import (
 	"html/template"
@@ -29,7 +29,7 @@ func (ms *MemStorage) Reset() {
 	}
 }
 
-func NewMemStorage() *MemStorage {
+func New() *MemStorage {
 	gauge := make(map[string]float64)
 	counter := make(map[string]int64)
 	return &MemStorage{Gauge: gauge, Counter: counter}
@@ -69,7 +69,7 @@ func (ms *MemStorage) AddCounterMetric(name string, value int64) {
 	}
 }
 
-func (ms *MemStorage) GetAllMetric(w io.Writer) {
+func (ms *MemStorage) WriteMetricsReport(w io.Writer) {
 
 	const tmpl = `
 <html>
@@ -105,13 +105,4 @@ func (ms *MemStorage) GetAllMetric(w io.Writer) {
 		log.Println("error:", err)
 		return
 	}
-}
-
-// интерфейс для взаимодействия с хранилищем MemStorage и другими хранилищами, напрмер, fileStorage
-type Storage interface {
-	GetGaugeMetric(name string) (float64, bool)
-	GetCounterMetric(name string) (int64, bool)
-	GetAllMetric(w io.Writer)
-	AddGaugeMetric(name string, value float64)
-	AddCounterMetric(name string, value int64)
 }

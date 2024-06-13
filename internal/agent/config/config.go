@@ -1,4 +1,4 @@
-package agent
+package config
 
 import (
 	"flag"
@@ -11,11 +11,11 @@ import (
 
 type Config struct {
 	Address        string
-	ReportInterval int // секретный ключ шифрования
+	ReportInterval int
 	PollInterval   int
 }
 
-func NewConfig() (*Config, error) { // apiPort string
+func New() (*Config, error) {
 	addr := os.Getenv("ADDRESS")
 	envPollDelay := os.Getenv("POLL_INTERVAL")
 	envReportDelay := os.Getenv("REPORT_INTERVAL")

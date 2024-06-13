@@ -2,17 +2,25 @@ package handlers
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
-
-	store "github.com/adettelle/go-metric-collector/internal/storage"
 )
 
-type MetricAPI struct {
-	Storage store.Storage
+// интерфейс для взаимодействия с хранилищем MemStorage и другими хранилищами, напрмер, fileStorage
+type StorageInterface interface {
+	GetGaugeMetric(name string) (float64, bool)
+	GetCounterMetric(name string) (int64, bool)
+	WriteMetricsReport(w io.Writer)
+	AddGaugeMetric(name string, value float64)
+	AddCounterMetric(name string, value int64)
 }
 
-func NewMetricAPI(storage store.Storage) *MetricAPI {
+type MetricAPI struct {
+	Storage StorageInterface
+}
+
+func NewMetricAPI(storage StorageInterface) *MetricAPI {
 	return &MetricAPI{
 		Storage: storage,
 	}
@@ -20,7 +28,7 @@ func NewMetricAPI(storage store.Storage) *MetricAPI {
 
 // CreateMetric adds metric into MemStorage
 // POST http://localhost:8080/update/counter/someMetric/527
-func (metricAPI *MetricAPI) CreateMetric(w http.ResponseWriter, r *http.Request) {
+func (ma *MetricAPI) CreateMetric(w http.ResponseWriter, r *http.Request) {
 	metricName := r.PathValue("metric_name")
 	metricValue := r.PathValue("metric_value")
 	metricType := r.PathValue("metric_type")
@@ -32,7 +40,7 @@ func (metricAPI *MetricAPI) CreateMetric(w http.ResponseWriter, r *http.Request)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		metricAPI.Storage.AddGaugeMetric(metricName, value)
+		ma.Storage.AddGaugeMetric(metricName, value)
 
 		w.WriteHeader(http.StatusOK)
 		_, err = w.Write([]byte("Created"))
@@ -47,7 +55,7 @@ func (metricAPI *MetricAPI) CreateMetric(w http.ResponseWriter, r *http.Request)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		metricAPI.Storage.AddCounterMetric(metricName, value)
+		ma.Storage.AddCounterMetric(metricName, value)
 
 		w.WriteHeader(http.StatusOK)
 		_, err = w.Write([]byte("Created"))
@@ -55,7 +63,7 @@ func (metricAPI *MetricAPI) CreateMetric(w http.ResponseWriter, r *http.Request)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		// fmt.Println(metricAPI.Storage) // {map[] map[someMetric:[527]]}
+		// fmt.Println(ma.Storage) // {map[] map[someMetric:[527]]}
 
 	default:
 		w.WriteHeader(http.StatusBadRequest)
@@ -70,12 +78,12 @@ func (metricAPI *MetricAPI) CreateMetric(w http.ResponseWriter, r *http.Request)
 
 // GetMetric gets metric from MemStorage
 // GET http://localhost:8080/value/counter/HeapAlloc
-func (metricAPI *MetricAPI) GetMetricByValue(w http.ResponseWriter, r *http.Request) {
+func (ma *MetricAPI) GetMetricByValue(w http.ResponseWriter, r *http.Request) {
 	metricNameToSearch := r.PathValue("metric_name")
 	metricTypeToSearch := r.PathValue("metric_type")
 	switch {
 	case metricTypeToSearch == "counter":
-		metric, metricExists := metricAPI.Storage.GetCounterMetric(metricNameToSearch)
+		metric, metricExists := ma.Storage.GetCounterMetric(metricNameToSearch)
 		if !metricExists {
 			w.WriteHeader(http.StatusNotFound)
 			return
@@ -86,7 +94,7 @@ func (metricAPI *MetricAPI) GetMetricByValue(w http.ResponseWriter, r *http.Requ
 			return
 		}
 	case metricTypeToSearch == "gauge":
-		metric, metricExists := metricAPI.Storage.GetGaugeMetric(metricNameToSearch)
+		metric, metricExists := ma.Storage.GetGaugeMetric(metricNameToSearch)
 		if !metricExists {
 			w.WriteHeader(http.StatusNotFound)
 			return
@@ -108,6 +116,6 @@ func (metricAPI *MetricAPI) GetMetricByValue(w http.ResponseWriter, r *http.Requ
 
 }
 
-func (metricAPI *MetricAPI) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
-	metricAPI.Storage.GetAllMetric(w)
+func (ma *MetricAPI) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
+	ma.Storage.WriteMetricsReport(w)
 }

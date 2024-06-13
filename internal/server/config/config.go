@@ -1,4 +1,4 @@
-package server
+package config
 
 import (
 	"flag"
@@ -25,7 +25,7 @@ func getAddr() string {
 	return *flagAddr
 }
 
-func NewConfig() (*Config, error) {
+func New() (*Config, error) {
 	return &Config{Address: getAddr()}, nil
 }
 
