@@ -11,7 +11,6 @@ import (
 	"github.com/adettelle/go-metric-collector/internal/agent/metricservice"
 )
 
-// POLLINTERVAL=2 REPORTINTERVAL=10 go run ./cmd/agent/
 func main() {
 	metricsStorage := memstorage.New()
 	config, err := config.New()
@@ -20,9 +19,9 @@ func main() {
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(1)
+	wg.Add(2)
 
-	go metricservice.SendLoop(time.Duration(config.ReportInterval), metricsStorage, config.Address)
-	go metricservice.RetrieveLoop(time.Duration(config.PollInterval), metricsStorage)
+	go metricservice.SendLoop(time.Duration(config.ReportInterval), metricsStorage, config.Address, &wg)
+	go metricservice.RetrieveLoop(time.Duration(config.PollInterval), metricsStorage, &wg)
 	wg.Wait()
 }

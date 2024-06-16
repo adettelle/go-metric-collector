@@ -11,8 +11,8 @@ import (
 
 type Config struct {
 	Address        string
-	ReportInterval int
-	PollInterval   int
+	ReportInterval int // по умолчанию 10 сек
+	PollInterval   int // по умолчанию 2 сек
 }
 
 func New() (*Config, error) {

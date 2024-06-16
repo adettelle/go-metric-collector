@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"net/http"
 	"runtime"
+	"sync"
 	"time"
 
 	store "github.com/adettelle/go-metric-collector/internal/storage/memstorage"
@@ -54,7 +55,8 @@ func sendAllMetrics(ms *store.MemStorage, addr string) error {
 }
 
 // sendLoop sends all metrics to the server (MemStorage) with delay
-func SendLoop(delay time.Duration, metricsStorage *store.MemStorage, addr string) {
+func SendLoop(delay time.Duration, metricsStorage *store.MemStorage, addr string, wg *sync.WaitGroup) {
+	defer wg.Done()
 	ticker := time.NewTicker(time.Second * delay)
 
 	for range ticker.C {
@@ -68,7 +70,8 @@ func SendLoop(delay time.Duration, metricsStorage *store.MemStorage, addr string
 }
 
 // retrieveLoop gets all metrics from MemStorage to the server with delay
-func RetrieveLoop(delay time.Duration, metricsStorage *store.MemStorage) {
+func RetrieveLoop(delay time.Duration, metricsStorage *store.MemStorage, wg *sync.WaitGroup) {
+	defer wg.Done()
 	ticker := time.NewTicker(time.Second * delay)
 
 	for range ticker.C {

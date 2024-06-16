@@ -8,7 +8,7 @@ import (
 )
 
 // интерфейс для взаимодействия с хранилищем MemStorage и другими хранилищами, напрмер, fileStorage
-type StorageInterface interface {
+type StorageInterfacer interface {
 	GetGaugeMetric(name string) (float64, bool)
 	GetCounterMetric(name string) (int64, bool)
 	WriteMetricsReport(w io.Writer)
@@ -17,10 +17,10 @@ type StorageInterface interface {
 }
 
 type MetricAPI struct {
-	Storage StorageInterface
+	Storage StorageInterfacer
 }
 
-func NewMetricAPI(storage StorageInterface) *MetricAPI {
+func NewMetricAPI(storage StorageInterfacer) *MetricAPI {
 	return &MetricAPI{
 		Storage: storage,
 	}
