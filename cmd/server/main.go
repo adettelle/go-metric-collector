@@ -1,3 +1,4 @@
+// сервер для сбора рантайм-метрик, который собирает репорты от агентов по протоколу HTTP
 package main
 
 import (
@@ -5,10 +6,10 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/adettelle/go-metric-collector/internal/api"
 	"github.com/adettelle/go-metric-collector/internal/handlers"
 	"github.com/adettelle/go-metric-collector/internal/server/config"
 	"github.com/adettelle/go-metric-collector/internal/storage/memstorage"
-	"github.com/go-chi/chi/v5"
 )
 
 func main() {
@@ -19,14 +20,15 @@ func main() {
 	}
 
 	ms := memstorage.New()
-	mAPI := handlers.NewMetricAPI(ms)
+	mAPI := handlers.NewMetricHandlers(ms) // объект хэндлеров, ранее было handlers.NewMetricAPI(ms)
+	r := api.NewMetricRouter(ms, mAPI)
 
-	r := chi.NewRouter()
+	// r := chi.NewRouter()
 
-	// POST /update/counter/someMetric/123
-	r.Post("/update/{metric_type}/{metric_name}/{metric_value}", mAPI.CreateMetric)
-	r.Get("/value/{metric_type}/{metric_name}", mAPI.GetMetricByValue)
-	r.Get("/", mAPI.GetAllMetrics)
+	// // POST /update/counter/someMetric/123
+	// r.Post("/update/{metric_type}/{metric_name}/{metric_value}", mAPI.CreateMetric)
+	// r.Get("/value/{metric_type}/{metric_name}", mAPI.GetMetricByValue)
+	// r.Get("/", mAPI.GetAllMetrics)
 
 	fmt.Printf("Starting server on %s\n", config.Address)
 

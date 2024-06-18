@@ -1,34 +1,39 @@
+// слой веб контроллер отвечает за обработку входящих http запросов
 package handlers
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
+
+	// "github.com/adettelle/go-metric-collector/internal/agent/metricservice"
+	"github.com/adettelle/go-metric-collector/internal/server/service"
+	"github.com/adettelle/go-metric-collector/internal/storage/memstorage"
 )
 
 // интерфейс для взаимодействия с хранилищем MemStorage и другими хранилищами, напрмер, fileStorage
-type StorageInterfacer interface {
-	GetGaugeMetric(name string) (float64, bool)
-	GetCounterMetric(name string) (int64, bool)
-	WriteMetricsReport(w io.Writer)
-	AddGaugeMetric(name string, value float64)
-	AddCounterMetric(name string, value int64)
+// type Storager interface {
+// 	GetGaugeMetric(name string) (float64, bool)
+// 	GetCounterMetric(name string) (int64, bool)
+// 	AddGaugeMetric(name string, value float64)
+// 	AddCounterMetric(name string, value int64)
+// 	GetAllGaugeMetrics() map[string]float64
+// 	GetAllCounterMetrics() map[string]int64
+// }
+
+type MetricHandlers struct { // было MetricAPI
+	Storage *memstorage.MemStorage // Storager
 }
 
-type MetricAPI struct {
-	Storage StorageInterfacer
-}
-
-func NewMetricAPI(storage StorageInterfacer) *MetricAPI {
-	return &MetricAPI{
+func NewMetricHandlers(storage *memstorage.MemStorage) *MetricHandlers { //Storager // ранее был NewMetricAPI
+	return &MetricHandlers{
 		Storage: storage,
 	}
 }
 
 // CreateMetric adds metric into MemStorage
 // POST http://localhost:8080/update/counter/someMetric/527
-func (ma *MetricAPI) CreateMetric(w http.ResponseWriter, r *http.Request) {
+func (ma *MetricHandlers) CreateMetric(w http.ResponseWriter, r *http.Request) {
 	metricName := r.PathValue("metric_name")
 	metricValue := r.PathValue("metric_value")
 	metricType := r.PathValue("metric_type")
@@ -78,7 +83,7 @@ func (ma *MetricAPI) CreateMetric(w http.ResponseWriter, r *http.Request) {
 
 // GetMetric gets metric from MemStorage
 // GET http://localhost:8080/value/counter/HeapAlloc
-func (ma *MetricAPI) GetMetricByValue(w http.ResponseWriter, r *http.Request) {
+func (ma *MetricHandlers) GetMetricByValue(w http.ResponseWriter, r *http.Request) {
 	metricNameToSearch := r.PathValue("metric_name")
 	metricTypeToSearch := r.PathValue("metric_type")
 	switch {
@@ -116,6 +121,6 @@ func (ma *MetricAPI) GetMetricByValue(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (ma *MetricAPI) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
-	ma.Storage.WriteMetricsReport(w)
+func (ma *MetricHandlers) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
+	service.WriteMetricsReport(ma.Storage, w)
 }
