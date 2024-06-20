@@ -1,3 +1,4 @@
+// пакет конфигурации сервера
 package config
 
 import (
