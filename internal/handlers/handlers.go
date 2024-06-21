@@ -57,7 +57,18 @@ func (mh *MetricHandlers) JSONHandlerUpdate(w http.ResponseWriter, r *http.Reque
 		mh.Storage.AddGaugeMetric(metric.ID, *metric.Value)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, err = w.Write([]byte("Created"))
+
+		_, ok := mh.Storage.GetGaugeMetric(metric.ID)
+		if !ok {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		resp, err := json.Marshal(metric)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError) // ?????
+			return
+		}
+		_, err = w.Write(resp)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -67,7 +78,23 @@ func (mh *MetricHandlers) JSONHandlerUpdate(w http.ResponseWriter, r *http.Reque
 		mh.Storage.AddCounterMetric(metric.ID, *metric.Delta)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, err = w.Write([]byte("Created"))
+		// _, err = w.Write([]byte("Created"))
+		// if err != nil {
+		// 	w.WriteHeader(http.StatusInternalServerError)
+		// 	return
+		// }
+		_, ok := mh.Storage.GetCounterMetric(metric.ID)
+		if !ok {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		resp, err := json.Marshal(metric)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError) // ?????
+			return
+		}
+
+		_, err = w.Write(resp)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
