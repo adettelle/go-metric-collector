@@ -18,5 +18,8 @@ func NewMetricRouter(ms *memstorage.MemStorage, mh *handlers.MetricHandlers) *ch
 	r.Get("/value/{metric_type}/{metric_name}", logger.WithLogging(mh.GetMetricByValue))
 	r.Get("/", logger.WithLogging(mh.GetAllMetrics))
 
+	r.Post("/update/", logger.WithLogging(mh.JSONHandlerUpdate))
+	r.Post("/value/", logger.WithLogging(mh.JSONHandlerValue))
+
 	return r
 }

@@ -7,18 +7,17 @@ import (
 	"go.uber.org/zap"
 )
 
-type (
-	// структура для хранения сведений об ответе
-	responseData struct {
-		status int
-		size   int
-	}
-	// добавляем реализацию http.ResponseWriter
-	loggingResponseWriter struct {
-		http.ResponseWriter // встраиваем оригинальный http.ResponseWriter
-		responseData        *responseData
-	}
-)
+// структура для хранения сведений об ответе
+type responseData struct {
+	status int
+	size   int
+}
+
+// добавляем реализацию http.ResponseWriter
+type loggingResponseWriter struct {
+	http.ResponseWriter // встраиваем оригинальный http.ResponseWriter
+	responseData        *responseData
+}
 
 func (r *loggingResponseWriter) Write(b []byte) (int, error) {
 	// записываем ответ, используя оригинальный http.ResponseWriter
