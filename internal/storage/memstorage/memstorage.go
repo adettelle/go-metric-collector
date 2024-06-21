@@ -1,9 +1,8 @@
+// слой хранения: отвечает за хранение метрик (подразумевается два дериватива: положить и достать)
+// аналог банковской ячейки (положить, достать)
 package memstorage
 
 import (
-	"html/template"
-	"io"
-	"log"
 	"sync"
 )
 
@@ -69,40 +68,10 @@ func (ms *MemStorage) AddCounterMetric(name string, value int64) {
 	}
 }
 
-func (ms *MemStorage) WriteMetricsReport(w io.Writer) {
+func (ms *MemStorage) GetAllCounterMetrics() map[string]int64 {
+	return ms.Counter
+}
 
-	const tmpl = `
-<html>
-
-	<body>
-		<h1>Gauge metrics</h1>
-    	<table> 
-		{{range $key, $val := .Gauge}}
-     		<tr>
-				<td>{{$key}}</td>
-				<td>{{$val}}</td> 
-			</tr>
-		{{end}}
-		</table>
-
-		<h1>Counter metrics</h1>
-    	<table> 
-		{{range $key, $val := .Counter}}
-     		<tr>
-				<td>{{$key}}</td>
-				<td>{{$val}}</td> 
-			</tr>
-		{{end}}
-		</table>
-	</body>
-
-</html>
-	`
-	t := template.Must(template.New("tmpl").Parse(tmpl))
-
-	err := t.Execute(w, ms)
-	if err != nil {
-		log.Println("error:", err)
-		return
-	}
+func (ms *MemStorage) GetAllGaugeMetrics() map[string]float64 {
+	return ms.Gauge
 }
