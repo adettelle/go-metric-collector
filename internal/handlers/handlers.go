@@ -252,4 +252,6 @@ func (mh *MetricHandlers) GetMetricByValue(w http.ResponseWriter, r *http.Reques
 
 func (mh *MetricHandlers) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 	service.WriteMetricsReport(mh.Storage, w)
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(http.StatusOK)
 }
