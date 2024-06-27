@@ -18,7 +18,7 @@ func NewMetricRouter(ms *memstorage.MemStorage, mh *handlers.MetricHandlers) *ch
 	r.Post("/update/{metric_type}/{metric_name}/{metric_value}", logger.WithLogging(mh.CreateMetric))
 	r.Get("/value/{metric_type}/{metric_name}", logger.WithLogging(mh.GetMetricByValue))
 
-	r.Get("/", logger.WithLogging(mh.GetAllMetrics))
+	r.Get("/", logger.WithLogging(mware.GzipMiddleware(mh.GetAllMetrics)))
 
 	// метод получает метрику на вход для обновления и для добавления
 	// GzipMiddleware смотрит на HTTP-заголовка Content-Encoding
