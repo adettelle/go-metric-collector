@@ -128,7 +128,7 @@ func TestPostCounterMetric(t *testing.T) {
 
 func testPostMetric(t *testing.T, request *http.Request, expectedStatus int, expectedBody string) *http.Response {
 	metricStore := memstorage.New()
-	mAPI := handlers.NewMetricAPI(metricStore)
+	mAPI := handlers.NewMetricHandlers(metricStore)
 	w := httptest.NewRecorder()
 	mAPI.CreateMetric(w, request)
 
@@ -177,7 +177,7 @@ const tmpl = `
 
 func TestGetAllMetrics(t *testing.T) {
 	metricStore := memstorage.New()
-	metricAPI := handlers.NewMetricAPI(metricStore)
+	metricAPI := handlers.NewMetricHandlers(metricStore)
 	metricStore.AddCounterMetric("C1", 123)
 	metricStore.AddCounterMetric("C1", 456)
 	metricStore.AddGaugeMetric("G1", 123)
@@ -201,7 +201,7 @@ func TestGetAllMetrics(t *testing.T) {
 }
 
 // http://localhost:8080/value/counter/HeapAlloc
-func testGetValue(mType, mName string, mAPI *handlers.MetricAPI) (string, int) {
+func testGetValue(mType, mName string, mAPI *handlers.MetricHandlers) (string, int) {
 
 	w := httptest.NewRecorder()
 	//defer w.Result().Body.Close()
@@ -222,7 +222,7 @@ func testGetValue(mType, mName string, mAPI *handlers.MetricAPI) (string, int) {
 }
 func TestGetMetricByValue(t *testing.T) {
 	metricStore := memstorage.New()
-	mAPI := handlers.NewMetricAPI(metricStore)
+	mAPI := handlers.NewMetricHandlers(metricStore)
 
 	metricStore.AddCounterMetric("C1", 123)
 	metricStore.AddCounterMetric("C1", 456)
