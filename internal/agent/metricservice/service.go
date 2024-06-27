@@ -2,6 +2,8 @@
 package metricservice
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
@@ -33,12 +35,40 @@ func NewMetricService(config *config.Config, metricStorage *mstore.MemStorage) *
 	}
 }
 
+type MetricRequest struct {
+	ID    string   `json:"id"`              // имя метрики
+	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
+	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
+	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
+}
+
 func (ms *MetricService) sendMetric(metricType string, name string, value float64) error {
-	url := fmt.Sprintf("http://%s/update/%s/%s/%v", ms.config.Address, metricType, name, value)
-	req, err := http.NewRequest(http.MethodPost, url, nil)
+	url := fmt.Sprintf("http://%s/update/", ms.config.Address)
+
+	m := &MetricRequest{
+		ID:    name,
+		MType: metricType,
+	}
+
+	if metricType == "gauge" {
+		m.Value = &value
+	} else if metricType == "counter" {
+		v := int64(value)
+		m.Delta = &v
+	} else {
+		return fmt.Errorf("metricType is not OK: %s", metricType)
+	}
+
+	data, err := json.Marshal(m)
 	if err != nil {
 		return err
 	}
+
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
+	if err != nil {
+		return err
+	}
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
@@ -48,6 +78,7 @@ func (ms *MetricService) sendMetric(metricType string, name string, value float6
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("response is not OK, status: %d", resp.StatusCode)
 	}
+
 	return nil
 }
 

@@ -40,7 +40,6 @@ func WithLogging(h http.HandlerFunc) http.HandlerFunc {
 
 		logger, err := zap.NewDevelopment()
 		if err != nil {
-			// вызываем панику, если ошибка
 			panic("cannot initialize zap")
 		}
 		defer logger.Sync()
