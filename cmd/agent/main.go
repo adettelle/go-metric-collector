@@ -1,3 +1,5 @@
+// агент (HTTP-клиент) для сбора рантайм-метрик
+// и их последующей отправки на сервер по протоколу HTTP
 package main
 
 import (
@@ -18,10 +20,12 @@ func main() {
 		log.Fatal(err)
 	}
 
+	mservice := metricservice.NewMetricService(config, metricsStorage)
+
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	go metricservice.SendLoop(time.Duration(config.ReportInterval), metricsStorage, config.Address, &wg)
-	go metricservice.RetrieveLoop(time.Duration(config.PollInterval), metricsStorage, &wg)
+	go mservice.SendLoop(time.Duration(config.ReportInterval), &wg)
+	go mservice.RetrieveLoop(time.Duration(config.PollInterval), &wg)
 	wg.Wait()
 }

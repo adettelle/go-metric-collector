@@ -17,12 +17,12 @@ type Config struct {
 
 func New() (*Config, error) {
 	addr := os.Getenv("ADDRESS")
-	envPollDelay := os.Getenv("POLL_INTERVAL")
-	envReportDelay := os.Getenv("REPORT_INTERVAL")
+	envPollInterval := os.Getenv("POLL_INTERVAL")
+	envReportInterval := os.Getenv("REPORT_INTERVAL")
 
 	flagAddr := flag.String("a", "localhost:8080", "Net address localhost:port")
-	flagPollDelay := flag.Int("p", 2, "metrics poll interval, seconds")
-	flagReportDelay := flag.Int("r", 10, "metrics report interval, seconds")
+	flagPollInterval := flag.Int("p", 2, "metrics poll interval, seconds")
+	flagReportInterval := flag.Int("r", 10, "metrics report interval, seconds")
 	flag.Parse()
 
 	if addr == "" {
@@ -31,20 +31,20 @@ func New() (*Config, error) {
 	ensureAddrFLagIsCorrect(addr)
 
 	var pollDelay int
-	if envPollDelay == "" {
-		pollDelay = *flagPollDelay
+	if envPollInterval == "" {
+		pollDelay = *flagPollInterval
 	} else {
-		pollDelay = parseIntOrPanic(envPollDelay)
+		pollDelay = parseIntOrPanic(envPollInterval)
 	}
 
-	var reportDelay int
-	if envReportDelay == "" {
-		reportDelay = *flagReportDelay
+	var reportInterval int
+	if envReportInterval == "" {
+		reportInterval = *flagReportInterval
 	} else {
-		reportDelay = parseIntOrPanic(envPollDelay)
+		reportInterval = parseIntOrPanic(envPollInterval)
 	}
 
-	return &Config{Address: addr, ReportInterval: reportDelay, PollInterval: pollDelay}, nil
+	return &Config{Address: addr, ReportInterval: reportInterval, PollInterval: pollDelay}, nil
 }
 
 func parseIntOrPanic(s string) int {

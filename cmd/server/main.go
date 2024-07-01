@@ -1,36 +1,92 @@
+// сервер для сбора рантайм-метрик, который собирает репорты от агентов по протоколу HTTP
 package main
 
 import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"time"
 
+	"github.com/adettelle/go-metric-collector/internal/api"
 	"github.com/adettelle/go-metric-collector/internal/handlers"
+
 	"github.com/adettelle/go-metric-collector/internal/server/config"
 	"github.com/adettelle/go-metric-collector/internal/storage/memstorage"
-	"github.com/go-chi/chi/v5"
 )
 
 func main() {
+
+	var ms *memstorage.MemStorage
+	var err error
 
 	config, err := config.New()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	ms := memstorage.New()
-	mAPI := handlers.NewMetricAPI(ms)
+	fi, err := os.Stat("/tmp/metrics-db.json")
+	if err != nil {
+		fmt.Println(err)
+	}
 
-	r := chi.NewRouter()
+	fileStoragePath, err := os.Stat(config.StoragePath)
+	if err != nil {
+		log.Printf("No such file: %v", config.StoragePath)
+	}
 
-	// POST /update/counter/someMetric/123
-	r.Post("/update/{metric_type}/{metric_name}/{metric_value}", mAPI.CreateMetric)
-	r.Get("/value/{metric_type}/{metric_name}", mAPI.GetMetricByValue)
-	r.Get("/", mAPI.GetAllMetrics)
+	if _, err := os.Stat("/tmp/metrics-db.json"); os.IsNotExist(err) || fi.Size() == 0 {
+		if config.StoragePath == "/tmp/metrics-db.json" && config.Restore {
+			config.Restore = false
+		}
+	}
 
+	if config.Restore {
+		if fileStoragePath.Size() == 0 {
+			ms = &memstorage.MemStorage{
+				Gauge:   map[string]float64{},
+				Counter: map[string]int64{},
+			}
+		} else {
+			ms, err = memstorage.ReadMetricsSnapshot(config.StoragePath)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+	} else {
+		ms = memstorage.New()
+	}
+	fmt.Println("ms:", ms.Counter, ms.Gauge)
+
+	if config.StoreInterval > 0 {
+		go memstorage.StartSaveLoop(time.Second*time.Duration(config.StoreInterval),
+			config.StoragePath, ms)
+	} else if config.StoreInterval == 0 {
+		// если config.StoreInterval равен 0, то мы назначаем MemStorage FileName, чтобы
+		// он мог синхронно писать изменения
+		ms.FileName = config.StoragePath
+	}
+
+	log.Println("config:", config)
+	go startServer(config, ms)
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	s := <-c
+	log.Printf("Got termination signal: %s. Graceful shutdown", s)
+
+	err = memstorage.WriteMetricsSnapshot(config.StoragePath, ms)
+	if err != nil {
+		log.Println("unable to write to file")
+	}
+}
+
+func startServer(config *config.Config, ms *memstorage.MemStorage) {
 	fmt.Printf("Starting server on %s\n", config.Address)
-
-	err = http.ListenAndServe(config.Address, r)
+	mAPI := handlers.NewMetricHandlers(ms, config) // объект хэндлеров, ранее было handlers.NewMetricAPI(ms)
+	r := api.NewMetricRouter(ms, mAPI)
+	err := http.ListenAndServe(config.Address, r)
 	if err != nil {
 		log.Fatal(err)
 	}
