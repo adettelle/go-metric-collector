@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strconv"
 
-	// "github.com/adettelle/go-metric-collector/internal/agent/metricservice"
+	"github.com/adettelle/go-metric-collector/internal/server/config"
 	"github.com/adettelle/go-metric-collector/internal/server/service"
 	"github.com/adettelle/go-metric-collector/internal/storage/memstorage"
 )
@@ -23,13 +23,6 @@ import (
 // 	GetAllCounterMetrics() map[string]int64
 // }
 
-type Metrics struct {
-	ID    string   `json:"id"`              // имя метрики
-	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
-	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
-	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
-}
-
 func (mh *MetricHandlers) JSONHandlerUpdate(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != http.MethodPost {
@@ -37,7 +30,7 @@ func (mh *MetricHandlers) JSONHandlerUpdate(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	var metric Metrics
+	var metric memstorage.Metric
 	var buf bytes.Buffer
 
 	// читаем тело запроса
@@ -104,7 +97,7 @@ func (mh *MetricHandlers) JSONHandlerValue(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	var metric Metrics
+	var metric memstorage.Metric
 	var buf bytes.Buffer
 
 	// читаем тело запроса
@@ -153,11 +146,13 @@ func (mh *MetricHandlers) JSONHandlerValue(w http.ResponseWriter, r *http.Reques
 
 type MetricHandlers struct { // было MetricAPI
 	Storage *memstorage.MemStorage // Storager
+	Config  *config.Config
 }
 
-func NewMetricHandlers(storage *memstorage.MemStorage) *MetricHandlers { //Storager // ранее был NewMetricAPI
+func NewMetricHandlers(storage *memstorage.MemStorage, config *config.Config) *MetricHandlers { //Storager // ранее был NewMetricAPI
 	return &MetricHandlers{
 		Storage: storage,
+		Config:  config,
 	}
 }
 

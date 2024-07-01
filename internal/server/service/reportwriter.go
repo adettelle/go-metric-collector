@@ -15,7 +15,7 @@ import (
 // 	GetAllCounterMetrics() map[string]int64
 // }
 
-func WriteMetricsReport(ms *memstorage.MemStorage, w io.Writer) { //
+func WriteMetricsReport(ms *memstorage.MemStorage, w io.Writer) {
 
 	const tmpl = `
 <html>
@@ -52,8 +52,8 @@ func WriteMetricsReport(ms *memstorage.MemStorage, w io.Writer) { //
 	}
 
 	m := tmlParams{
-		Gauge:   ms.GetAllGaugeMetrics(),   // r
-		Counter: ms.GetAllCounterMetrics(), // r
+		Gauge:   ms.GetAllGaugeMetrics(),
+		Counter: ms.GetAllCounterMetrics(),
 	}
 	err := t.Execute(w, m)
 	if err != nil {

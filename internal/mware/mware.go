@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/adettelle/go-metric-collector/internal/gzip"
+	"github.com/adettelle/go-metric-collector/internal/mygzip"
 )
 
 func GzipMiddleware(h http.HandlerFunc) http.HandlerFunc {
@@ -28,7 +28,7 @@ func GzipMiddleware(h http.HandlerFunc) http.HandlerFunc {
 			if supportsGzip {
 				w.Header().Set("Content-Encoding", "gzip")
 				// оборачиваем оригинальный http.ResponseWriter новым с поддержкой сжатия
-				cw := gzip.NewCompressWriter(w)
+				cw := mygzip.NewCompressWriter(w)
 				// меняем оригинальный http.ResponseWriter на новый
 				ow = cw
 				// не забываем отправить клиенту все сжатые данные после завершения middleware
@@ -42,7 +42,7 @@ func GzipMiddleware(h http.HandlerFunc) http.HandlerFunc {
 			sendsGzip := strings.Contains(ce, "gzip")
 			if sendsGzip {
 				// оборачиваем тело запроса в io.Reader с поддержкой декомпрессии
-				cr, err := gzip.NewCompressReader(r.Body)
+				cr, err := mygzip.NewCompressReader(r.Body)
 				if err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
 					return
