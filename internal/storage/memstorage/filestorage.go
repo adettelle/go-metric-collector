@@ -42,6 +42,9 @@ func ReadMetricsSnapshot(fileName string) (*MemStorage, error) {
 
 	// read our opened jsonFile as a byte array.
 	byteValue, err := io.ReadAll(jsonFile)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// we initialize our AllMetrics array
 	var allMetrics AllMetrics
