@@ -33,7 +33,7 @@ func main() {
 
 	fileStoragePath, err := os.Stat(config.StoragePath)
 	if err != nil {
-		log.Printf("No such file: %v", config.StoragePath) // ?????????
+		log.Printf("No such file: %v", config.StoragePath)
 	}
 
 	if _, err := os.Stat("/tmp/metrics-db.json"); os.IsNotExist(err) || fi.Size() == 0 {

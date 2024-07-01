@@ -56,7 +56,7 @@ func getStoreInterval(flagStoreInterval *int) int {
 	return storeInterval
 }
 
-func getStoragePath(flagStoragePath *string) string { // надо ли здесь ставить условия на нулевое значение????
+func getStoragePath(flagStoragePath *string) string {
 	fmt.Println("flagStoragePath:", *flagStoragePath)
 	storagePath, ok := os.LookupEnv("FILE_STORAGE_PATH")
 	fmt.Println("StoragePathEnv:", storagePath)
