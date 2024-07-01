@@ -27,6 +27,7 @@ func WriteMetricsSnapshot(fileName string, ms *MemStorage) error {
 	// добавляем перенос строки
 	data = append(data, '\n')
 
+	log.Printf("writing to file: %s", fileName)
 	_, err = file.Write(data)
 	return err
 }
@@ -40,6 +41,7 @@ func ReadMetricsSnapshot(fileName string) (*MemStorage, error) {
 	}
 	defer jsonFile.Close()
 
+	log.Printf("reading from file: %s", fileName)
 	// read our opened jsonFile as a byte array.
 	byteValue, err := io.ReadAll(jsonFile)
 	if err != nil {

@@ -67,6 +67,7 @@ func main() {
 		ms.FileName = config.StoragePath
 	}
 
+	log.Println("config:", config)
 	mAPI := handlers.NewMetricHandlers(ms, config) // объект хэндлеров, ранее было handlers.NewMetricAPI(ms)
 	r := api.NewMetricRouter(ms, mAPI)
 
