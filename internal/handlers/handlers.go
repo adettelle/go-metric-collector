@@ -24,7 +24,6 @@ import (
 // }
 
 func (mh *MetricHandlers) JSONHandlerUpdate(w http.ResponseWriter, r *http.Request) {
-
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -234,7 +233,7 @@ func (mh *MetricHandlers) GetMetricByValue(w http.ResponseWriter, r *http.Reques
 			return
 		}
 	default:
-		w.WriteHeader(http.StatusNotFound)
+		w.WriteHeader(http.StatusBadRequest)
 		_, err := w.Write([]byte("No such metric type"))
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
