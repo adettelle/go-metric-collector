@@ -30,6 +30,11 @@ func main() {
 		fmt.Println(err)
 	}
 
+	fileStoragePath, err := os.Stat(config.StoragePath)
+	if err != nil {
+		log.Printf("No such file: %v", config.StoragePath) // ?????????
+	}
+
 	if _, err := os.Stat("/tmp/metrics-db.json"); os.IsNotExist(err) || fi.Size() == 0 {
 		if config.StoragePath == "/tmp/metrics-db.json" && config.Restore {
 			config.Restore = false
@@ -37,13 +42,21 @@ func main() {
 	}
 
 	if config.Restore {
-		ms, err = memstorage.ReadMetricsSnapshot(config.StoragePath)
-		if err != nil {
-			log.Fatal(err)
+		if fileStoragePath.Size() == 0 {
+			ms = &memstorage.MemStorage{
+				Gauge:   map[string]float64{},
+				Counter: map[string]int64{},
+			}
+		} else {
+			ms, err = memstorage.ReadMetricsSnapshot(config.StoragePath)
+			if err != nil {
+				log.Fatal(err)
+			}
 		}
 	} else {
 		ms = memstorage.New()
 	}
+	fmt.Println("ms:", ms.Counter, ms.Gauge)
 
 	if config.StoreInterval > 0 {
 		go memstorage.StartSaveLoop(time.Second*time.Duration(config.StoreInterval),

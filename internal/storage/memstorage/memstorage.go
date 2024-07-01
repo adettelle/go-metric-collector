@@ -23,8 +23,10 @@ type AllMetrics struct {
 // MemStorage - это имплементация интерфейса Storage
 type MemStorage struct {
 	sync.RWMutex
-	Gauge    map[string]float64
-	Counter  map[string]int64
+	Gauge   map[string]float64
+	Counter map[string]int64
+	// если config.StoreInterval равен 0, то мы назначаем MemStorage FileName,
+	// чтобы он мог синхронно писать изменения
 	FileName string
 }
 
