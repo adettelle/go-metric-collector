@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/adettelle/go-metric-collector/internal/handlers"
+	"github.com/adettelle/go-metric-collector/internal/server/config"
 	"github.com/adettelle/go-metric-collector/internal/storage/memstorage"
 	"github.com/stretchr/testify/assert"
 )
@@ -40,6 +41,13 @@ var metrics = []metric{
 		metricName:  "G2",
 		metricValue: "456",
 	},
+}
+
+var Config *config.Config = &config.Config{
+	Address:       "localhost:8080",
+	StoreInterval: 5,
+	StoragePath:   "./test.json",
+	Restore:       false,
 }
 
 // var mStorage = storage.NewMemStorage()
@@ -127,8 +135,9 @@ func TestPostCounterMetric(t *testing.T) {
 }
 
 func testPostMetric(t *testing.T, request *http.Request, expectedStatus int, expectedBody string) *http.Response {
+
 	metricStore := memstorage.New()
-	mAPI := handlers.NewMetricHandlers(metricStore)
+	mAPI := handlers.NewMetricHandlers(metricStore, Config)
 	w := httptest.NewRecorder()
 	mAPI.CreateMetric(w, request)
 
@@ -176,8 +185,9 @@ const tmpl = `
 	`
 
 func TestGetAllMetrics(t *testing.T) {
+
 	metricStore := memstorage.New()
-	metricAPI := handlers.NewMetricHandlers(metricStore)
+	metricAPI := handlers.NewMetricHandlers(metricStore, Config)
 	metricStore.AddCounterMetric("C1", 123)
 	metricStore.AddCounterMetric("C1", 456)
 	metricStore.AddGaugeMetric("G1", 123)
@@ -221,8 +231,9 @@ func testGetValue(mType, mName string, mAPI *handlers.MetricHandlers) (string, i
 	return w.Body.String(), code
 }
 func TestGetMetricByValue(t *testing.T) {
+
 	metricStore := memstorage.New()
-	mAPI := handlers.NewMetricHandlers(metricStore)
+	mAPI := handlers.NewMetricHandlers(metricStore, Config)
 
 	metricStore.AddCounterMetric("C1", 123)
 	metricStore.AddCounterMetric("C1", 456)
