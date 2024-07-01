@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"time"
 
 	"github.com/adettelle/go-metric-collector/internal/api"
@@ -68,12 +69,24 @@ func main() {
 	}
 
 	log.Println("config:", config)
+	go startServer(config, ms)
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	s := <-c
+	log.Printf("Got termination signal: %s. Graceful shutdown", s)
+
+	err = memstorage.WriteMetricsSnapshot(config.StoragePath, ms)
+	if err != nil {
+		log.Println("unable to write to file")
+	}
+}
+
+func startServer(config *config.Config, ms *memstorage.MemStorage) {
+	fmt.Printf("Starting server on %s\n", config.Address)
 	mAPI := handlers.NewMetricHandlers(ms, config) // объект хэндлеров, ранее было handlers.NewMetricAPI(ms)
 	r := api.NewMetricRouter(ms, mAPI)
-
-	fmt.Printf("Starting server on %s\n", config.Address)
-
-	err = http.ListenAndServe(config.Address, r)
+	err := http.ListenAndServe(config.Address, r)
 	if err != nil {
 		log.Fatal(err)
 	}
