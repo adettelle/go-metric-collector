@@ -233,7 +233,7 @@ func (mh *MetricHandlers) GetMetricByValue(w http.ResponseWriter, r *http.Reques
 			return
 		}
 	default:
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusNotFound)
 		_, err := w.Write([]byte("No such metric type"))
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
