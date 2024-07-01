@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/adettelle/go-metric-collector/internal/api"
@@ -22,6 +23,17 @@ func main() {
 	config, err := config.New()
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	fi, err := os.Stat("/tmp/metrics-db.json")
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	if _, err := os.Stat("/tmp/metrics-db.json"); os.IsNotExist(err) || fi.Size() == 0 {
+		if config.StoragePath == "/tmp/metrics-db.json" && config.Restore {
+			config.Restore = false
+		}
 	}
 
 	if config.Restore {
