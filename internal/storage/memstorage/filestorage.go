@@ -6,6 +6,8 @@ import (
 	"log"
 	"os"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 // запись в файл слепка метрик
@@ -26,6 +28,13 @@ func WriteMetricsSnapshot(fileName string, ms *MemStorage) error {
 
 	// добавляем перенос строки
 	data = append(data, '\n')
+
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		panic("cannot initialize zap")
+	}
+	defer logger.Sync()
+	logger.Info("writing to file", zap.String("fileName", fileName))
 
 	log.Printf("writing to file: %s", fileName)
 	_, err = file.Write(data)
