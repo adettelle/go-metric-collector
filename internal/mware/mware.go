@@ -9,11 +9,12 @@ import (
 
 func GzipMiddleware(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+
 		contentType := r.Header.Values("Content-Type") // contentType := r.Header.Get("Content-Type")
 		for _, ct := range contentType {
 			if !strings.Contains(ct, "application/json") &&
 				!strings.Contains(ct, "text/html") {
-				w.WriteHeader(http.StatusInternalServerError)
+				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
 		}
@@ -43,6 +44,7 @@ func GzipMiddleware(h http.HandlerFunc) http.HandlerFunc {
 			if sendsGzip {
 				// оборачиваем тело запроса в io.Reader с поддержкой декомпрессии
 				cr, err := mygzip.NewCompressReader(r.Body)
+
 				if err != nil {
 					w.WriteHeader(http.StatusInternalServerError)
 					return
