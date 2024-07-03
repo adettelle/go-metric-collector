@@ -18,21 +18,17 @@ import (
 
 func main() {
 
-	var ms *memstorage.MemStorage
-	var err error
+	// var ms *memstorage.MemStorage
+	// var err error
 
 	config, err := config.New()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if config.ShouldRestore() {
-		ms, err = memstorage.ReadMetricsSnapshot(config.StoragePath)
-		if err != nil {
-			log.Fatal(err)
-		}
-	} else {
-		ms = memstorage.New()
+	ms, err := memstorage.New(config.ShouldRestore(), config.StoragePath)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	if config.StoreInterval > 0 {
@@ -67,56 +63,3 @@ func startServer(config *config.Config, ms *memstorage.MemStorage) {
 		log.Fatal(err)
 	}
 }
-
-// func shouldRestore(config *config.Config) bool {
-
-// 	if !config.Restore {
-// 		return false
-// 	}
-
-// 	fileStoragePath, err := os.Stat(config.StoragePath)
-
-// 	if err != nil {
-// 		if os.IsNotExist(err) {
-// 			return false
-// 		}
-// 		log.Fatal(err)
-// 	}
-
-// 	// в этом месте мы знаем, что файл существует, и что Restore = true,
-// 	// значит надо убедится в размере файла
-// 	return fileStoragePath.Size() > 0
-
-// if err == nil {
-// 	// если есть файл fileStoragePath и он не пустой, то надо будет считать из него
-// 	if fileStoragePath.Size() > 0 {
-// 		return true
-// 	}
-// 	// если пустой, то нечего считывать
-// 	return false
-// }
-
-// return false
-// в противном случае если файла нет, то проверяем файл по умолчанию
-// const defaultStorageFile = "/tmp/metrics-db.json"
-
-// // если файл по умолчанию
-// if fi, err := os.Stat(defaultStorageFile); os.IsNotExist(err) || fi.Size() == 0 {
-// 	if config.StoragePath == defaultStorageFile && config.Restore {
-// 		config.Restore = false
-// 	}
-// }
-
-// fileStoragePath, err := os.Stat(config.StoragePath)
-// if err != nil {
-// 	log.Printf("No such file: %v", config.StoragePath)
-// }
-
-// if fi, err := os.Stat(defaultStorageFile); os.IsNotExist(err) || fi.Size() == 0 {
-// 	if config.StoragePath == defaultStorageFile && config.Restore {
-// 		config.Restore = false
-// 	}
-// }
-
-//return config.Restore && fileStoragePath.Size() > 0
-// }

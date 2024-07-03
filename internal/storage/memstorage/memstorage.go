@@ -51,10 +51,19 @@ func (ms *MemStorage) Reset() {
 	}
 }
 
-func New() *MemStorage {
+func New(shouldRestore bool, storagePath string) (*MemStorage, error) {
+
+	if shouldRestore {
+		ms, err := ReadMetricsSnapshot(storagePath)
+		if err != nil {
+			return nil, err
+		}
+		return ms, nil
+	}
+
 	gauge := make(map[string]float64)
 	counter := make(map[string]int64)
-	return &MemStorage{Gauge: gauge, Counter: counter}
+	return &MemStorage{Gauge: gauge, Counter: counter}, nil
 }
 
 func (ms *MemStorage) GetGaugeMetric(name string) (float64, bool) {
@@ -129,7 +138,10 @@ func MemStorageToAllMetrics(ms *MemStorage) AllMetrics {
 }
 
 func AllMetricsToMemStorage(am *AllMetrics) (*MemStorage, error) {
-	ms := New()
+	ms, err := New(false, "")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	for _, metric := range am.AllMetrics {
 		if metric.MType == "gauge" {
