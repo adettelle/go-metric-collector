@@ -16,8 +16,8 @@ import (
 	mstore "github.com/adettelle/go-metric-collector/internal/storage/memstorage"
 )
 
-// Структура MetricService получает и рассылает метрики, запускает свои циклы (Loop)
-type MetricService struct {
+// Структура MetricCollector получает и рассылает метрики, запускает свои циклы (Loop)
+type MetricCollector struct {
 	config *config.Config
 	// store         StorageInterfase
 	metricStorage *mstore.MemStorage
@@ -26,9 +26,9 @@ type MetricService struct {
 // type StorageInterfase interface {
 // }
 
-func NewMetricService(config *config.Config, metricStorage *mstore.MemStorage) *MetricService { // store StorageInterfase,
+func NewMetricCollector(config *config.Config, metricStorage *mstore.MemStorage) *MetricCollector { // store StorageInterfase,
 
-	return &MetricService{
+	return &MetricCollector{
 		config: config,
 		// store:         store,
 		metricStorage: metricStorage,
@@ -42,7 +42,7 @@ type MetricRequest struct {
 	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
 }
 
-func (ms *MetricService) sendMetric(metricType string, name string, value float64) error {
+func (ms *MetricCollector) sendMetric(metricType string, name string, value float64) error {
 	url := fmt.Sprintf("http://%s/update/", ms.config.Address)
 
 	m := &MetricRequest{
@@ -82,7 +82,7 @@ func (ms *MetricService) sendMetric(metricType string, name string, value float6
 	return nil
 }
 
-func (ms *MetricService) sendAllMetrics() error {
+func (ms *MetricCollector) sendAllMetrics() error {
 	for name, value := range ms.metricStorage.Gauge {
 		err := ms.sendMetric("gauge", name, value)
 		if err != nil {
@@ -107,7 +107,7 @@ func (ms *MetricService) sendAllMetrics() error {
 }
 
 // sendLoop sends all metrics to the server (MemStorage) with delay
-func (ms *MetricService) SendLoop(delay time.Duration, wg *sync.WaitGroup) {
+func (ms *MetricCollector) SendLoop(delay time.Duration, wg *sync.WaitGroup) {
 	defer wg.Done()
 	ticker := time.NewTicker(time.Second * delay)
 
@@ -122,7 +122,7 @@ func (ms *MetricService) SendLoop(delay time.Duration, wg *sync.WaitGroup) {
 }
 
 // retrieveLoop gets all metrics from MemStorage to the server with delay
-func (ms *MetricService) RetrieveLoop(delay time.Duration, wg *sync.WaitGroup) {
+func (ms *MetricCollector) RetrieveLoop(delay time.Duration, wg *sync.WaitGroup) {
 	defer wg.Done()
 	ticker := time.NewTicker(time.Second * delay)
 
@@ -134,7 +134,7 @@ func (ms *MetricService) RetrieveLoop(delay time.Duration, wg *sync.WaitGroup) {
 
 // retrieveAllMetrics получает все метрики из пакета runtime
 // и собирает дополнительные метрики (PollCount и RandomValue)
-func (ms *MetricService) retrieveAllMetrics() {
+func (ms *MetricCollector) retrieveAllMetrics() {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 

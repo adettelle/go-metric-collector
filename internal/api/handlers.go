@@ -1,5 +1,5 @@
 // слой веб контроллер отвечает за обработку входящих http запросов
-package handlers
+package api
 
 import (
 	"bytes"
@@ -137,6 +137,7 @@ func (mh *MetricHandlers) JSONHandlerValue(w http.ResponseWriter, r *http.Reques
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

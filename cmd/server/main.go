@@ -10,16 +10,12 @@ import (
 	"time"
 
 	"github.com/adettelle/go-metric-collector/internal/api"
-	"github.com/adettelle/go-metric-collector/internal/handlers"
 
 	"github.com/adettelle/go-metric-collector/internal/server/config"
 	"github.com/adettelle/go-metric-collector/internal/storage/memstorage"
 )
 
 func main() {
-
-	// var ms *memstorage.MemStorage
-	// var err error
 
 	config, err := config.New()
 	if err != nil {
@@ -45,18 +41,26 @@ func main() {
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
-	s := <-c
-	log.Printf("Got termination signal: %s. Graceful shutdown", s)
 
-	err = memstorage.WriteMetricsSnapshot(config.StoragePath, ms)
-	if err != nil {
-		log.Println("unable to write to file")
-	}
+	done := make(chan bool, 1)
+
+	go func() {
+
+		s := <-c
+		log.Printf("Got termination signal: %s. Graceful shutdown", s)
+
+		err = memstorage.WriteMetricsSnapshot(config.StoragePath, ms)
+		if err != nil {
+			log.Println("unable to write to file")
+		}
+		done <- true
+	}()
+	<-done
 }
 
 func startServer(config *config.Config, ms *memstorage.MemStorage) {
 	fmt.Printf("Starting server on %s\n", config.Address)
-	mAPI := handlers.NewMetricHandlers(ms, config) // объект хэндлеров, ранее было handlers.NewMetricAPI(ms)
+	mAPI := api.NewMetricHandlers(ms, config) // объект хэндлеров, ранее было handlers.NewMetricAPI(ms)
 	r := api.NewMetricRouter(ms, mAPI)
 	err := http.ListenAndServe(config.Address, r)
 	if err != nil {

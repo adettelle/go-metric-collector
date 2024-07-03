@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/adettelle/go-metric-collector/internal/handlers"
+	"github.com/adettelle/go-metric-collector/internal/api"
 	"github.com/adettelle/go-metric-collector/internal/server/config"
 	"github.com/adettelle/go-metric-collector/internal/storage/memstorage"
 	"github.com/stretchr/testify/assert"
@@ -147,7 +147,7 @@ func testPostMetric(t *testing.T, request *http.Request, expectedStatus int, exp
 	if err != nil {
 		log.Fatal(err)
 	}
-	mAPI := handlers.NewMetricHandlers(metricStore, Config)
+	mAPI := api.NewMetricHandlers(metricStore, Config)
 	w := httptest.NewRecorder()
 	mAPI.CreateMetric(w, request)
 
@@ -200,7 +200,7 @@ func TestGetAllMetrics(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	metricAPI := handlers.NewMetricHandlers(metricStore, Config)
+	metricAPI := api.NewMetricHandlers(metricStore, Config)
 	metricStore.AddCounterMetric("C1", 123)
 	metricStore.AddCounterMetric("C1", 456)
 	metricStore.AddGaugeMetric("G1", 123)
@@ -224,7 +224,7 @@ func TestGetAllMetrics(t *testing.T) {
 }
 
 // http://localhost:8080/value/counter/HeapAlloc
-func testGetValue(mType, mName string, mAPI *handlers.MetricHandlers) (string, int) {
+func testGetValue(mType, mName string, mAPI *api.MetricHandlers) (string, int) {
 
 	w := httptest.NewRecorder()
 	//defer w.Result().Body.Close()
@@ -249,7 +249,7 @@ func TestGetMetricByValue(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	mAPI := handlers.NewMetricHandlers(metricStore, Config)
+	mAPI := api.NewMetricHandlers(metricStore, Config)
 
 	metricStore.AddCounterMetric("C1", 123)
 	metricStore.AddCounterMetric("C1", 456)

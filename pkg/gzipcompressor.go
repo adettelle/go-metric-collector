@@ -1,4 +1,4 @@
-package mygzip
+package pkg
 
 import (
 	"compress/gzip"
@@ -58,11 +58,11 @@ func NewCompressReader(r io.ReadCloser) (*compressReader, error) {
 	}, nil
 }
 
-func (c compressReader) Read(p []byte) (n int, err error) {
+func (c *compressReader) Read(p []byte) (n int, err error) {
 	return c.zr.Read(p)
 }
 
-func (c compressReader) Close() error {
+func (c *compressReader) Close() error {
 	if err := c.zr.Close(); err != nil {
 		return err
 	}
