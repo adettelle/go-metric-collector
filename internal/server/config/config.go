@@ -105,3 +105,23 @@ func parseIntOrPanic(s string) int {
 	}
 	return x
 }
+
+func (config *Config) ShouldRestore() bool {
+
+	if !config.Restore {
+		return false
+	}
+
+	fileStoragePath, err := os.Stat(config.StoragePath)
+
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false
+		}
+		log.Fatal(err)
+	}
+
+	// в этом месте мы знаем, что файл существует, и что Restore = true,
+	// значит надо убедится в размере файла
+	return fileStoragePath.Size() > 0
+}

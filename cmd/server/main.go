@@ -26,38 +26,14 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fi, err := os.Stat("/tmp/metrics-db.json")
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	fileStoragePath, err := os.Stat(config.StoragePath)
-	if err != nil {
-		log.Printf("No such file: %v", config.StoragePath)
-	}
-
-	if _, err := os.Stat("/tmp/metrics-db.json"); os.IsNotExist(err) || fi.Size() == 0 {
-		if config.StoragePath == "/tmp/metrics-db.json" && config.Restore {
-			config.Restore = false
-		}
-	}
-
-	if config.Restore {
-		if fileStoragePath.Size() == 0 {
-			ms = &memstorage.MemStorage{
-				Gauge:   map[string]float64{},
-				Counter: map[string]int64{},
-			}
-		} else {
-			ms, err = memstorage.ReadMetricsSnapshot(config.StoragePath)
-			if err != nil {
-				log.Fatal(err)
-			}
+	if config.ShouldRestore() {
+		ms, err = memstorage.ReadMetricsSnapshot(config.StoragePath)
+		if err != nil {
+			log.Fatal(err)
 		}
 	} else {
 		ms = memstorage.New()
 	}
-	fmt.Println("ms:", ms.Counter, ms.Gauge)
 
 	if config.StoreInterval > 0 {
 		go memstorage.StartSaveLoop(time.Second*time.Duration(config.StoreInterval),
@@ -91,3 +67,56 @@ func startServer(config *config.Config, ms *memstorage.MemStorage) {
 		log.Fatal(err)
 	}
 }
+
+// func shouldRestore(config *config.Config) bool {
+
+// 	if !config.Restore {
+// 		return false
+// 	}
+
+// 	fileStoragePath, err := os.Stat(config.StoragePath)
+
+// 	if err != nil {
+// 		if os.IsNotExist(err) {
+// 			return false
+// 		}
+// 		log.Fatal(err)
+// 	}
+
+// 	// в этом месте мы знаем, что файл существует, и что Restore = true,
+// 	// значит надо убедится в размере файла
+// 	return fileStoragePath.Size() > 0
+
+// if err == nil {
+// 	// если есть файл fileStoragePath и он не пустой, то надо будет считать из него
+// 	if fileStoragePath.Size() > 0 {
+// 		return true
+// 	}
+// 	// если пустой, то нечего считывать
+// 	return false
+// }
+
+// return false
+// в противном случае если файла нет, то проверяем файл по умолчанию
+// const defaultStorageFile = "/tmp/metrics-db.json"
+
+// // если файл по умолчанию
+// if fi, err := os.Stat(defaultStorageFile); os.IsNotExist(err) || fi.Size() == 0 {
+// 	if config.StoragePath == defaultStorageFile && config.Restore {
+// 		config.Restore = false
+// 	}
+// }
+
+// fileStoragePath, err := os.Stat(config.StoragePath)
+// if err != nil {
+// 	log.Printf("No such file: %v", config.StoragePath)
+// }
+
+// if fi, err := os.Stat(defaultStorageFile); os.IsNotExist(err) || fi.Size() == 0 {
+// 	if config.StoragePath == defaultStorageFile && config.Restore {
+// 		config.Restore = false
+// 	}
+// }
+
+//return config.Restore && fileStoragePath.Size() > 0
+// }
