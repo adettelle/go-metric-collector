@@ -37,7 +37,16 @@ func main() {
 	}
 
 	log.Println("config:", config)
-	go startServer(config, ms)
+
+	go func() {
+		fmt.Printf("Starting server on %s\n", config.Address)
+		mAPI := api.NewMetricHandlers(ms, config) // объект хэндлеров, ранее было handlers.NewMetricAPI(ms)
+		r := api.NewMetricRouter(ms, mAPI)
+		err := http.ListenAndServe(config.Address, r)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
@@ -56,14 +65,4 @@ func main() {
 		done <- true
 	}()
 	<-done
-}
-
-func startServer(config *config.Config, ms *memstorage.MemStorage) {
-	fmt.Printf("Starting server on %s\n", config.Address)
-	mAPI := api.NewMetricHandlers(ms, config) // объект хэндлеров, ранее было handlers.NewMetricAPI(ms)
-	r := api.NewMetricRouter(ms, mAPI)
-	err := http.ListenAndServe(config.Address, r)
-	if err != nil {
-		log.Fatal(err)
-	}
 }

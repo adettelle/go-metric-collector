@@ -23,6 +23,18 @@ import (
 // 	GetAllCounterMetrics() map[string]int64
 // }
 
+type MetricHandlers struct { // было MetricAPI
+	Storage *memstorage.MemStorage // Storager
+	Config  *config.Config
+}
+
+func NewMetricHandlers(storage *memstorage.MemStorage, config *config.Config) *MetricHandlers { //Storager // ранее был NewMetricAPI
+	return &MetricHandlers{
+		Storage: storage,
+		Config:  config,
+	}
+}
+
 func (mh *MetricHandlers) JSONHandlerUpdate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -142,18 +154,6 @@ func (mh *MetricHandlers) JSONHandlerValue(w http.ResponseWriter, r *http.Reques
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(resp)
-}
-
-type MetricHandlers struct { // было MetricAPI
-	Storage *memstorage.MemStorage // Storager
-	Config  *config.Config
-}
-
-func NewMetricHandlers(storage *memstorage.MemStorage, config *config.Config) *MetricHandlers { //Storager // ранее был NewMetricAPI
-	return &MetricHandlers{
-		Storage: storage,
-		Config:  config,
-	}
 }
 
 // CreateMetric adds metric into MemStorage
