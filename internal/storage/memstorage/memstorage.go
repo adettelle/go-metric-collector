@@ -1,11 +1,23 @@
+// слой хранения: отвечает за хранение метрик (подразумевается два дериватива: положить и достать)
+// аналог банковской ячейки (положить, достать)
 package memstorage
 
 import (
-	"html/template"
-	"io"
+	"fmt"
 	"log"
 	"sync"
 )
+
+type Metric struct {
+	ID    string   `json:"id"`              // имя метрики
+	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
+	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
+	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
+}
+
+type AllMetrics struct {
+	AllMetrics []Metric `json:"metrics"`
+}
 
 // MemStorage is used for storaging metrics
 // MemStorage - это имплементация интерфейса Storage
@@ -13,6 +25,9 @@ type MemStorage struct {
 	sync.RWMutex
 	Gauge   map[string]float64
 	Counter map[string]int64
+	// если config.StoreInterval равен 0, то мы назначаем MemStorage FileName,
+	// чтобы он мог синхронно писать изменения
+	FileName string
 }
 
 // Reset() обнуляет карты Gauge и Counter в структуре MemStorage
@@ -27,12 +42,28 @@ func (ms *MemStorage) Reset() {
 	for k := range ms.Counter {
 		delete(ms.Counter, k)
 	}
+
+	if ms.FileName != "" {
+		err := WriteMetricsSnapshot(ms.FileName, ms)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 }
 
-func New() *MemStorage {
+func New(shouldRestore bool, storagePath string) (*MemStorage, error) {
+
+	if shouldRestore {
+		ms, err := ReadMetricsSnapshot(storagePath)
+		if err != nil {
+			return nil, err
+		}
+		return ms, nil
+	}
+
 	gauge := make(map[string]float64)
 	counter := make(map[string]int64)
-	return &MemStorage{Gauge: gauge, Counter: counter}
+	return &MemStorage{Gauge: gauge, Counter: counter}, nil
 }
 
 func (ms *MemStorage) GetGaugeMetric(name string) (float64, bool) {
@@ -56,6 +87,13 @@ func (ms *MemStorage) AddGaugeMetric(name string, value float64) {
 	defer ms.Unlock()
 
 	ms.Gauge[name] = value
+
+	if ms.FileName != "" {
+		err := WriteMetricsSnapshot(ms.FileName, ms)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 }
 
 func (ms *MemStorage) AddCounterMetric(name string, value int64) {
@@ -67,42 +105,53 @@ func (ms *MemStorage) AddCounterMetric(name string, value int64) {
 	} else {
 		ms.Counter[name] += value
 	}
+
+	if ms.FileName != "" {
+		err := WriteMetricsSnapshot(ms.FileName, ms)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 }
 
-func (ms *MemStorage) WriteMetricsReport(w io.Writer) {
+func (ms *MemStorage) GetAllCounterMetrics() map[string]int64 {
+	return ms.Counter
+}
 
-	const tmpl = `
-<html>
+func (ms *MemStorage) GetAllGaugeMetrics() map[string]float64 {
+	return ms.Gauge
+}
 
-	<body>
-		<h1>Gauge metrics</h1>
-    	<table> 
-		{{range $key, $val := .Gauge}}
-     		<tr>
-				<td>{{$key}}</td>
-				<td>{{$val}}</td> 
-			</tr>
-		{{end}}
-		</table>
+// функция из структуры memStorage делает структуру AllMetrics
+// перебираем ключи первой мэпы и перебираем ключи второй
+func MemStorageToAllMetrics(ms *MemStorage) AllMetrics {
+	var am AllMetrics
 
-		<h1>Counter metrics</h1>
-    	<table> 
-		{{range $key, $val := .Counter}}
-     		<tr>
-				<td>{{$key}}</td>
-				<td>{{$val}}</td> 
-			</tr>
-		{{end}}
-		</table>
-	</body>
-
-</html>
-	`
-	t := template.Must(template.New("tmpl").Parse(tmpl))
-
-	err := t.Execute(w, ms)
-	if err != nil {
-		log.Println("error:", err)
-		return
+	for k, v := range ms.Gauge {
+		am.AllMetrics = append(am.AllMetrics, Metric{ID: k, MType: "gauge", Value: &v})
 	}
+	for k, v := range ms.Counter {
+		am.AllMetrics = append(am.AllMetrics, Metric{ID: k, MType: "counter", Delta: &v})
+	}
+
+	return am
+}
+
+func AllMetricsToMemStorage(am *AllMetrics) (*MemStorage, error) {
+	ms, err := New(false, "")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, metric := range am.AllMetrics {
+		if metric.MType == "gauge" {
+			ms.AddGaugeMetric(metric.ID, *metric.Value)
+		} else if metric.MType == "counter" {
+			ms.AddCounterMetric(metric.ID, *metric.Delta)
+		} else {
+			return nil, fmt.Errorf("unknown metric type: %s", metric.MType)
+		}
+	}
+
+	return ms, nil
 }
