@@ -27,6 +27,7 @@ func NewMetricRouter(ms *memstorage.MemStorage, mh *MetricHandlers) *chi.Mux {
 	// GzipMiddleware смотрит на заголовок Accept-Encoding
 	// и если он gzip, то перед записью ответа сжимает его
 	r.Post("/value/", mware.WithLogging(mware.GzipMiddleware(mh.JSONHandlerValue)))
+	r.Get("/ping", mware.WithLogging(mware.GzipMiddleware(mh.CheckConnectionToDB)))
 
 	return r
 }

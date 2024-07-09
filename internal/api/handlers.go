@@ -5,9 +5,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
+	"github.com/adettelle/go-metric-collector/internal/db"
 	"github.com/adettelle/go-metric-collector/internal/server/config"
 	"github.com/adettelle/go-metric-collector/internal/server/service"
 	"github.com/adettelle/go-metric-collector/internal/storage/memstorage"
@@ -248,5 +250,15 @@ func (mh *MetricHandlers) GetMetricByValue(w http.ResponseWriter, r *http.Reques
 func (mh *MetricHandlers) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	service.WriteMetricsReport(mh.Storage, w)
+	w.WriteHeader(http.StatusOK)
+}
+
+func (mh *MetricHandlers) CheckConnectionToDB(w http.ResponseWriter, r *http.Request) {
+	log.Println("Checking DB")
+	err := db.Connect(mh.Config.DBParams)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
 }
