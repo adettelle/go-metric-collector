@@ -26,6 +26,7 @@ func main() {
 	}
 
 	var storager api.Storager
+	var ms *memstorage.MemStorage
 
 	if config.DBParams != "" {
 		db, err := db.Connect(config.DBParams)
@@ -37,7 +38,7 @@ func main() {
 			DB:  db,
 		}
 	} else {
-		ms, err := memstorage.New(config.ShouldRestore(), config.StoragePath)
+		ms, err = memstorage.New(config.ShouldRestore(), config.StoragePath)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -76,10 +77,10 @@ func main() {
 		s := <-c
 		log.Printf("Got termination signal: %s. Graceful shutdown", s)
 
-		// err = memstorage.WriteMetricsSnapshot(config.StoragePath, ms)
-		// if err != nil {
-		// 	log.Println("unable to write to file")
-		// }
+		err = memstorage.WriteMetricsSnapshot(config.StoragePath, ms)
+		if err != nil {
+			log.Println("unable to write to file")
+		}
 		done <- true
 	}()
 	<-done

@@ -50,26 +50,53 @@ func (dbstorage *DBStorage) GetCounterMetric(name string) (int64, bool, error) {
 
 func (dbstorage *DBStorage) AddGaugeMetric(name string, value float64) error {
 	log.Println("Writing to DB")
-
-	sqlStatement := "insert into metric (metric_type, metric_name, value)" +
-		"values ('gauge', $1, $2)"
-	_, err := dbstorage.DB.ExecContext(dbstorage.Ctx, sqlStatement, name, value)
+	val, ok, err := dbstorage.GetGaugeMetric(name)
 	if err != nil {
-		log.Println("Error:", err)
 		return err
 	}
+	if !ok {
+		sqlStatement := "insert into metric (metric_type, metric_name, value)" +
+			"values ('gauge', $1, $2)"
+		_, err := dbstorage.DB.ExecContext(dbstorage.Ctx, sqlStatement, name, value)
+		if err != nil {
+			log.Println("Error:", err)
+			return err
+		}
+	} else {
+		sqlStatement := "update metric set value = ? where metric_type = 'gauge' and metric_name = ?"
+		_, err := dbstorage.DB.ExecContext(dbstorage.Ctx, sqlStatement, val, name)
+		if err != nil {
+			log.Println("Error:", err)
+			return err
+		}
+	}
+
 	log.Println("Saved")
 	return nil
 }
 
 func (dbstorage *DBStorage) AddCounterMetric(name string, delta int64) error {
 
-	sqlStatement := "insert into metric (metric_type, metric_name, delta)" +
-		"values ('counter', $1, $2)"
-	_, err := dbstorage.DB.ExecContext(dbstorage.Ctx, sqlStatement, name, delta)
+	d, ok, err := dbstorage.GetCounterMetric(name)
 	if err != nil {
 		return err
 	}
+	if !ok {
+		sqlStatement := "insert into metric (metric_type, metric_name, delta)" +
+			"values ('counter', $1, $2)"
+		_, err := dbstorage.DB.ExecContext(dbstorage.Ctx, sqlStatement, name, delta)
+		if err != nil {
+			return err
+		}
+	} else {
+		sqlStatement := "update metric set delta = ? where metric_type = 'counter' and metric_name = ?"
+		_, err := dbstorage.DB.ExecContext(dbstorage.Ctx, sqlStatement, d, name)
+		if err != nil {
+			log.Println("Error:", err)
+			return err
+		}
+	}
+
 	return nil
 }
 

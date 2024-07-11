@@ -23,9 +23,8 @@ func New() (*Config, error) {
 	flagStoreInterval := flag.Int("i", 300, "store metrics to file interval, seconds")
 	flagStoragePath := flag.String("f", "/tmp/metrics-db.json", "file storage path")
 	flagRestore := flag.Bool("r", true, "restore or not data from file storage path")
-	flagDBParams := flag.String("d",
-		"host=host port=port user=myuser password=xxxx dbname=mydb sslmode=disable",
-		"db connection params")
+	flagDBParams := flag.String("d", "", "db connection params")
+	// "host=host port=port user=myuser password=xxxx dbname=mydb sslmode=disable"
 	flag.Parse()
 
 	return &Config{
