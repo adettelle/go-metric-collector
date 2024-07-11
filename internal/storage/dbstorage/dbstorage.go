@@ -16,7 +16,7 @@ type DBStorage struct {
 
 func (dbstorage *DBStorage) GetGaugeMetric(name string) (float64, bool, error) {
 
-	sqlStatement := "SELECT value FROM metric WHERE metric_type = 'gauge' and metric_name = ?"
+	sqlStatement := "SELECT value FROM metric WHERE metric_type = 'gauge' and metric_id = ?"
 	row := dbstorage.DB.QueryRowContext(dbstorage.Ctx, sqlStatement, name)
 
 	// переменная для чтения результата
@@ -33,7 +33,7 @@ func (dbstorage *DBStorage) GetGaugeMetric(name string) (float64, bool, error) {
 
 func (dbstorage *DBStorage) GetCounterMetric(name string) (int64, bool, error) {
 
-	sqlStatement := "SELECT delta FROM metric WHERE metric_type = 'couter' and metric_name = ?"
+	sqlStatement := "SELECT delta FROM metric WHERE metric_type = 'couter' and metric_id = ?"
 	row := dbstorage.DB.QueryRowContext(dbstorage.Ctx, sqlStatement, name)
 
 	// переменная для чтения результата
@@ -55,7 +55,7 @@ func (dbstorage *DBStorage) AddGaugeMetric(name string, value float64) error {
 		return err
 	}
 	if !ok {
-		sqlStatement := "insert into metric (metric_type, metric_name, value)" +
+		sqlStatement := "insert into metric (metric_type, metric_id, value)" +
 			"values ('gauge', $1, $2)"
 		_, err := dbstorage.DB.ExecContext(dbstorage.Ctx, sqlStatement, name, value)
 		if err != nil {
@@ -63,7 +63,7 @@ func (dbstorage *DBStorage) AddGaugeMetric(name string, value float64) error {
 			return err
 		}
 	} else {
-		sqlStatement := "update metric set value = ? where metric_type = 'gauge' and metric_name = ?"
+		sqlStatement := "update metric set value = ? where metric_type = 'gauge' and metric_id = ?"
 		_, err := dbstorage.DB.ExecContext(dbstorage.Ctx, sqlStatement, val, name)
 		if err != nil {
 			log.Println("Error:", err)
@@ -82,14 +82,14 @@ func (dbstorage *DBStorage) AddCounterMetric(name string, delta int64) error {
 		return err
 	}
 	if !ok {
-		sqlStatement := "insert into metric (metric_type, metric_name, delta)" +
+		sqlStatement := "insert into metric (metric_type, metric_id, delta)" +
 			"values ('counter', $1, $2)"
 		_, err := dbstorage.DB.ExecContext(dbstorage.Ctx, sqlStatement, name, delta)
 		if err != nil {
 			return err
 		}
 	} else {
-		sqlStatement := "update metric set delta = ? where metric_type = 'counter' and metric_name = ?"
+		sqlStatement := "update metric set delta = ? where metric_type = 'counter' and metric_id = ?"
 		_, err := dbstorage.DB.ExecContext(dbstorage.Ctx, sqlStatement, d, name)
 		if err != nil {
 			log.Println("Error:", err)
