@@ -23,7 +23,7 @@ type AllMetrics struct {
 // MemStorage - это имплементация интерфейса Storage
 type MemStorage struct {
 	sync.RWMutex
-	Gauge   map[string]float64
+	Gauge   map[string]float64 // имя метрики: ее значение
 	Counter map[string]int64
 	// если config.StoreInterval равен 0, то мы назначаем MemStorage FileName,
 	// чтобы он мог синхронно писать изменения
@@ -66,23 +66,25 @@ func New(shouldRestore bool, storagePath string) (*MemStorage, error) {
 	return &MemStorage{Gauge: gauge, Counter: counter}, nil
 }
 
-func (ms *MemStorage) GetGaugeMetric(name string) (float64, bool) {
+func (ms *MemStorage) GetGaugeMetric(name string) (float64, bool, error) {
 	ms.RLock()
 	defer ms.RUnlock()
 
 	value, ok := ms.Gauge[name]
-	return value, ok
+
+	return value, ok, nil
 }
 
-func (ms *MemStorage) GetCounterMetric(name string) (int64, bool) {
+func (ms *MemStorage) GetCounterMetric(name string) (int64, bool, error) {
 	ms.RLock()
 	defer ms.RUnlock()
 
 	value, ok := ms.Counter[name]
-	return value, ok
+
+	return value, ok, nil
 }
 
-func (ms *MemStorage) AddGaugeMetric(name string, value float64) {
+func (ms *MemStorage) AddGaugeMetric(name string, value float64) error {
 	ms.Lock()
 	defer ms.Unlock()
 
@@ -91,12 +93,13 @@ func (ms *MemStorage) AddGaugeMetric(name string, value float64) {
 	if ms.FileName != "" {
 		err := WriteMetricsSnapshot(ms.FileName, ms)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 	}
+	return nil
 }
 
-func (ms *MemStorage) AddCounterMetric(name string, value int64) {
+func (ms *MemStorage) AddCounterMetric(name string, value int64) error {
 	ms.Lock()
 	defer ms.Unlock()
 
@@ -109,17 +112,18 @@ func (ms *MemStorage) AddCounterMetric(name string, value int64) {
 	if ms.FileName != "" {
 		err := WriteMetricsSnapshot(ms.FileName, ms)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 	}
+	return nil
 }
 
-func (ms *MemStorage) GetAllCounterMetrics() map[string]int64 {
-	return ms.Counter
+func (ms *MemStorage) GetAllCounterMetrics() (map[string]int64, error) {
+	return ms.Counter, nil
 }
 
-func (ms *MemStorage) GetAllGaugeMetrics() map[string]float64 {
-	return ms.Gauge
+func (ms *MemStorage) GetAllGaugeMetrics() (map[string]float64, error) {
+	return ms.Gauge, nil
 }
 
 // функция из структуры memStorage делает структуру AllMetrics

@@ -69,22 +69,25 @@ func TestAddCounterMetric(t *testing.T) {
 	assert.NotEqual(t, lenBeforeAdding, lenAfterAdding)
 
 	// проверка наличия метрики в map
-	val1, ok := ms.GetCounterMetric(name)
+	val1, ok, err := ms.GetCounterMetric(name)
 	assert.Equal(t, value, val1)
 	assert.True(t, ok)
+	assert.Nil(t, err)
 
 	// проверка добавление уже сущ-ей метрики
 	ms.AddCounterMetric(name, value)
-	val2, ok := ms.GetCounterMetric(name)
+	val2, ok, err := ms.GetCounterMetric(name)
 	assert.Equal(t, int64(1050), val2)
 	assert.True(t, ok)
+	assert.Nil(t, err)
 
 	// проверка получения несущ-ей метрики
 	unrealName := "UnrealMetric"
 	var zero int64 = 0
-	v, ok := ms.GetCounterMetric(unrealName)
+	v, ok, err := ms.GetCounterMetric(unrealName)
 	assert.False(t, ok)
 	assert.Equal(t, v, zero)
+	assert.Nil(t, err)
 }
 
 func TestAddGaugeMetric(t *testing.T) {
@@ -108,22 +111,25 @@ func TestAddGaugeMetric(t *testing.T) {
 	}
 
 	// проверка наличия метрики в map
-	val1, ok := ms.GetGaugeMetric(name)
+	val1, ok, err := ms.GetGaugeMetric(name)
 	assert.Equal(t, value, val1)
 	assert.True(t, ok)
+	assert.Nil(t, err)
 
 	// проверка добавление уже сущ-ей метрики
 	ms.AddGaugeMetric(name, value)
-	val2, ok := ms.GetGaugeMetric(name)
+	val2, ok, err := ms.GetGaugeMetric(name)
 	assert.Equal(t, value, val2) // при добавлении сущ-ей метрики метрика заменятеся на новую
 	assert.True(t, ok)
+	assert.Nil(t, err)
 
 	// проверка получения несущ-ей метрики
 	unrealName := "UnrealMetric"
 	var zero float64 = 0
-	v, ok := ms.GetGaugeMetric(unrealName)
+	v, ok, err := ms.GetGaugeMetric(unrealName)
 	assert.False(t, ok)
 	assert.Equal(t, v, zero)
+	assert.Nil(t, err)
 }
 
 // 200

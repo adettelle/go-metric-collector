@@ -3,12 +3,11 @@
 package api
 
 import (
-	"github.com/adettelle/go-metric-collector/internal/storage/memstorage"
 	"github.com/adettelle/go-metric-collector/pkg/mware"
 	"github.com/go-chi/chi/v5"
 )
 
-func NewMetricRouter(ms *memstorage.MemStorage, mh *MetricHandlers) *chi.Mux {
+func NewMetricRouter(ms Storager, mh *MetricHandlers) *chi.Mux { // ms *memstorage.MemStorage
 
 	r := chi.NewRouter()
 

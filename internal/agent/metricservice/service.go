@@ -23,9 +23,6 @@ type MetricCollector struct {
 	metricStorage *mstore.MemStorage
 }
 
-// type StorageInterfase interface {
-// }
-
 func NewMetricCollector(config *config.Config, metricStorage *mstore.MemStorage) *MetricCollector { // store StorageInterfase,
 
 	return &MetricCollector{
