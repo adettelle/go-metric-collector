@@ -9,9 +9,9 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-func CreateTable(db *sql.DB, ctx context.Context) error {
+func CreateTable(db *sql.DB, ctx context.Context) error { // metric_type_enum
 	sqlStqtement := "create table if not exists metric" +
-		"(id serial primary key , metric_type metric_type_enum not null," +
+		"(id serial primary key , metric_type text not null," +
 		"metric_name varchar(30) not null, value double precision not null default 0," +
 		"delta integer not null default 0, created_at timestamp not null default now());"
 
