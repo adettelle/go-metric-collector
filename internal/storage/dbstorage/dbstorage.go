@@ -119,6 +119,11 @@ func (dbstorage *DBStorage) GetAllCounterMetrics() (map[string]int64, error) {
 		}
 		res[name] = d
 	}
+	// проверяем на ошибки
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
 
 	return res, nil
 }
@@ -141,6 +146,11 @@ func (dbstorage *DBStorage) GetAllGaugeMetrics() (map[string]float64, error) {
 			return nil, err
 		}
 		res[name] = v
+	}
+	// проверяем на ошибки
+	err = rows.Err()
+	if err != nil {
+		return nil, err
 	}
 
 	return res, nil
