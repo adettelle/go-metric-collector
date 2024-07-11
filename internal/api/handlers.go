@@ -62,7 +62,7 @@ func (mh *MetricHandlers) JSONHandlerUpdate(w http.ResponseWriter, r *http.Reque
 	case metric.MType == "gauge":
 		mh.Storager.AddGaugeMetric(metric.ID, *metric.Value)
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
+		// w.WriteHeader(http.StatusOK)
 
 		_, ok, err := mh.Storager.GetGaugeMetric(metric.ID)
 		if err != nil {
@@ -73,11 +73,12 @@ func (mh *MetricHandlers) JSONHandlerUpdate(w http.ResponseWriter, r *http.Reque
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
+		w.WriteHeader(http.StatusOK)
 
 	case metric.MType == "counter":
 		mh.Storager.AddCounterMetric(metric.ID, *metric.Delta)
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
+		// w.WriteHeader(http.StatusOK)
 
 		_, ok, err := mh.Storager.GetCounterMetric(metric.ID)
 		if err != nil {
@@ -88,6 +89,7 @@ func (mh *MetricHandlers) JSONHandlerUpdate(w http.ResponseWriter, r *http.Reque
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
+		w.WriteHeader(http.StatusOK)
 
 	default:
 		w.WriteHeader(http.StatusBadRequest)
