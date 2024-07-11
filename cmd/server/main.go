@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/adettelle/go-metric-collector/internal/api"
-	"github.com/adettelle/go-metric-collector/internal/db"
+	database "github.com/adettelle/go-metric-collector/internal/db"
 
 	"github.com/adettelle/go-metric-collector/internal/server/config"
 	"github.com/adettelle/go-metric-collector/internal/storage/dbstorage"
@@ -29,13 +29,18 @@ func main() {
 	var ms *memstorage.MemStorage
 
 	if config.DBParams != "" {
-		db, err := db.Connect(config.DBParams)
+		db, err := database.Connect(config.DBParams)
 		if err != nil {
 			log.Fatal(err)
 		}
 		storager = &dbstorage.DBStorage{
 			Ctx: context.Background(),
 			DB:  db,
+		}
+
+		err = database.CreateTable(db, context.Background())
+		if err != nil {
+			log.Fatal(err)
 		}
 	} else {
 		ms, err = memstorage.New(config.ShouldRestore(), config.StoragePath)

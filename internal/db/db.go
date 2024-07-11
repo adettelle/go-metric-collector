@@ -9,6 +9,20 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
+func CreateTable(db *sql.DB, ctx context.Context) error {
+	sqlStqtement := "create table if not exists metric" +
+		"(id serial primary key , metric_type metric_type_enum not null," +
+		"metric_name varchar(30) not null, value double precision not null default 0," +
+		"delta integer not null default 0, created_at timestamp not null default now());"
+
+	_, err := db.ExecContext(ctx, sqlStqtement)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func Connect(dbParams string) (*sql.DB, error) {
 	log.Println("Connecting to DB", dbParams)
 	db, err := sql.Open("pgx", dbParams)
