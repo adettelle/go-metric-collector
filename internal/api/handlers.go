@@ -328,7 +328,11 @@ func (mh *MetricHandlers) MetricsHandlerUpdate(w http.ResponseWriter, r *http.Re
 	for _, metric := range Metrics {
 		switch {
 		case metric.MType == "gauge":
-			mh.Storager.AddGaugeMetric(metric.ID, *metric.Value)
+			err := mh.Storager.AddGaugeMetric(metric.ID, *metric.Value)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
 			w.Header().Set("Content-Type", "application/json")
 			// w.WriteHeader(http.StatusOK)
 
@@ -341,10 +345,14 @@ func (mh *MetricHandlers) MetricsHandlerUpdate(w http.ResponseWriter, r *http.Re
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
-			w.WriteHeader(http.StatusOK)
+			//w.WriteHeader(http.StatusOK)
 
 		case metric.MType == "counter":
-			mh.Storager.AddCounterMetric(metric.ID, *metric.Delta)
+			err := mh.Storager.AddCounterMetric(metric.ID, *metric.Delta)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
 			w.Header().Set("Content-Type", "application/json")
 			// w.WriteHeader(http.StatusOK)
 
@@ -357,7 +365,7 @@ func (mh *MetricHandlers) MetricsHandlerUpdate(w http.ResponseWriter, r *http.Re
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
-			w.WriteHeader(http.StatusOK)
+			// w.WriteHeader(http.StatusOK)
 
 		default:
 			w.WriteHeader(http.StatusBadRequest)
@@ -381,4 +389,5 @@ func (mh *MetricHandlers) MetricsHandlerUpdate(w http.ResponseWriter, r *http.Re
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	w.WriteHeader(http.StatusOK)
 }
