@@ -369,12 +369,13 @@ func (mh *MetricHandlers) MetricsHandlerUpdate(w http.ResponseWriter, r *http.Re
 			return
 		}
 	}
-	resp, err := json.Marshal(Metrics)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	// resp, err := json.Marshal(Metrics)
+	// if err != nil {
+	// 	w.WriteHeader(http.StatusInternalServerError)
+	// 	return
+	// }
 
+	resp := []byte("{\"result\": \"ok\"}")
 	_, err = w.Write(resp)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
