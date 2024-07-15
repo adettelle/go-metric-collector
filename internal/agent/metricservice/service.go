@@ -63,9 +63,7 @@ func (ms *MetricCollector) collectAllMetrics() ([]MetricRequest, error) {
 	return metrics, nil
 }
 
-type MetricsRequest struct {
-	Metrics []MetricRequest
-}
+type MetricsRequest []MetricRequest
 
 func (ms *MetricCollector) sendMultipleMetrics(metrics []MetricRequest) error {
 	url := fmt.Sprintf("http://%s/updates/", ms.config.Address)
@@ -74,9 +72,9 @@ func (ms *MetricCollector) sendMultipleMetrics(metrics []MetricRequest) error {
 
 	for i, chunk := range chunks {
 		log.Printf("Sending chunk %d of %d, chunk size %d\n", i+1, len(chunks), len(chunk))
-		msr := MetricsRequest{Metrics: chunk}
+		// msr := MetricsRequest{Metrics: chunk}
 
-		data, err := json.Marshal(msr)
+		data, err := json.Marshal(chunk)
 		if err != nil {
 			return err
 		}

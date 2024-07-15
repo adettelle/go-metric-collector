@@ -301,9 +301,7 @@ func (mh *MetricHandlers) CheckConnectionToDB(w http.ResponseWriter, r *http.Req
 	w.WriteHeader(http.StatusOK)
 }
 
-type MetricsRequest struct {
-	Metrics []memstorage.Metric
-}
+type MetricsRequest []memstorage.Metric
 
 // принимает в теле запроса множество метрик в формате: []Metrics (списка метрик) в виде json
 func (mh *MetricHandlers) MetricsHandlerUpdate(w http.ResponseWriter, r *http.Request) {
@@ -327,7 +325,7 @@ func (mh *MetricHandlers) MetricsHandlerUpdate(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	for _, metric := range Metrics.Metrics {
+	for _, metric := range Metrics {
 		switch {
 		case metric.MType == "gauge":
 			mh.Storager.AddGaugeMetric(metric.ID, *metric.Value)
