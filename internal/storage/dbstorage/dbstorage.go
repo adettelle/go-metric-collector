@@ -8,8 +8,6 @@ import (
 
 // DBStorage - это имплементация интерфейса Storage
 type DBStorage struct {
-	// Gauge   map[string]float64 // имя метрики: ее значение
-	// Counter map[string]int64
 	Ctx context.Context
 	DB  *sql.DB
 }
@@ -87,7 +85,6 @@ func (dbstorage *DBStorage) AddCounterMetric(name string, delta int64) error {
 		return err
 	}
 	if !ok {
-		log.Println("if !ok:")
 		sqlStatement := "insert into metric (metric_type, metric_id, delta)" +
 			"values ('counter', $1, $2)"
 		_, err := dbstorage.DB.ExecContext(dbstorage.Ctx, sqlStatement, name, delta)
@@ -96,7 +93,6 @@ func (dbstorage *DBStorage) AddCounterMetric(name string, delta int64) error {
 			return err
 		}
 	} else {
-		log.Println("if ok:")
 		sqlStatement := "update metric set delta = $1 where metric_type = 'counter' and metric_id = $2"
 		_, err := dbstorage.DB.ExecContext(dbstorage.Ctx, sqlStatement, d, name)
 		if err != nil {

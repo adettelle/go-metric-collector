@@ -39,68 +39,86 @@ type MetricRequest struct {
 	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
 }
 
-func (ms *MetricCollector) sendMetric(metricType string, name string, value float64) error {
-	url := fmt.Sprintf("http://%s/update/", ms.config.Address)
+func (ms *MetricCollector) collectAllMetrics() ([]MetricRequest, error) {
 
-	m := &MetricRequest{
-		ID:    name,
-		MType: metricType,
+	var metrics []MetricRequest
+
+	for name, value := range ms.metricStorage.Gauge {
+		metric := MetricRequest{
+			MType: "gauge",
+			ID:    name,
+			Value: &value,
+		}
+		metrics = append(metrics, metric)
+	}
+	for name, delta := range ms.metricStorage.Counter {
+		metric := MetricRequest{
+			MType: "counter",
+			ID:    name,
+			Delta: &delta,
+		}
+		metrics = append(metrics, metric)
 	}
 
-	if metricType == "gauge" {
-		m.Value = &value
-	} else if metricType == "counter" {
-		v := int64(value)
-		m.Delta = &v
-	} else {
-		return fmt.Errorf("metricType is not OK: %s", metricType)
-	}
+	return metrics, nil
+}
 
-	data, err := json.Marshal(m)
-	if err != nil {
-		return err
-	}
+type MetricsRequest struct {
+	Metrics []MetricRequest
+}
 
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
-	if err != nil {
-		return err
-	}
+func (ms *MetricCollector) sendMultipleMetrics(metrics []MetricRequest) error {
+	url := fmt.Sprintf("http://%s/updates/", ms.config.Address)
 
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
+	chunks := rangeChunks(10, metrics)
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("response is not OK, status: %d", resp.StatusCode)
+	for i, chunk := range chunks {
+		log.Printf("Sending chunk %d of %d, chunk size %d\n", i+1, len(chunks), len(chunk))
+		msr := MetricsRequest{Metrics: chunk}
+
+		data, err := json.Marshal(msr)
+		if err != nil {
+			return err
+		}
+
+		req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
+		if err != nil {
+			return err
+		}
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("response is not OK, status: %d", resp.StatusCode)
+		}
+
+		log.Printf("chunk %d sent successfully", i+1)
 	}
 
 	return nil
 }
 
-func (ms *MetricCollector) sendAllMetrics() error {
-	for name, value := range ms.metricStorage.Gauge {
-		err := ms.sendMetric("gauge", name, value)
-		if err != nil {
-			log.Printf("Couldn't send metric, %s", err.Error())
+func rangeChunks(chunkSize int, metrics []MetricRequest) [][]MetricRequest {
+	// const chunkSize = 3
+	res := [][]MetricRequest{}
 
-		} else {
-			log.Printf("Metric sent %v: %v", name, value)
+	currentChunk := []MetricRequest{}
+
+	for _, v := range metrics {
+		currentChunk = append(currentChunk, v)
+		if len(currentChunk) == chunkSize {
+			res = append(res, currentChunk)
+			currentChunk = []MetricRequest{}
 		}
 	}
-
-	for name, value := range ms.metricStorage.Counter {
-		err := ms.sendMetric("counter", name, float64(value))
-		if err != nil {
-			log.Printf("Couldn't send metric, %s", err.Error())
-			return err
-		} else {
-			log.Printf("Metric sent %v: %v", name, value)
-		}
+	if len(currentChunk) > 0 {
+		res = append(res, currentChunk)
 	}
-
-	return nil
+	return res
 }
 
 // sendLoop sends all metrics to the server (MemStorage) with delay
@@ -110,10 +128,12 @@ func (ms *MetricCollector) SendLoop(delay time.Duration, wg *sync.WaitGroup) {
 
 	for range ticker.C {
 		log.Println("Sending metrics")
-		err := ms.sendAllMetrics()
+		// err := ms.sendAllMetrics()
+		metrics, err := ms.collectAllMetrics() //
 		if err != nil {
 			log.Fatal(err)
 		}
+		ms.sendMultipleMetrics(metrics) //
 		ms.metricStorage.Reset()
 	}
 }
