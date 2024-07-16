@@ -88,6 +88,7 @@ func (ms *MetricCollector) sendMultipleMetrics(metrics []MetricRequest) error {
 		for i := 0; i < 4; i++ {
 			log.Printf("Sending %d attempt", i)
 			err = doSend(req)
+			log.Println("error in delay stack:", err)
 			if err == nil {
 				break
 			} else {
