@@ -53,10 +53,10 @@ func (dbstorage *DBStorage) GetCounterMetric(name string) (int64, bool, error) {
 func (dbstorage *DBStorage) AddGaugeMetric(name string, value float64) error {
 	log.Println("Writing to DB")
 
-	//tx, err := dbstorage.DB.Begin()
-	// if err != nil {
-	// 	return err
-	// }
+	tx, err := dbstorage.DB.Begin()
+	if err != nil {
+		return err
+	}
 
 	_, ok, err := dbstorage.GetGaugeMetric(name)
 	if err != nil {
@@ -68,7 +68,7 @@ func (dbstorage *DBStorage) AddGaugeMetric(name string, value float64) error {
 		_, err := dbstorage.DB.ExecContext(dbstorage.Ctx, sqlStatement, name, value)
 		if err != nil {
 			log.Println("Error:", err)
-			// tx.Rollback()
+			tx.Rollback()
 			return err
 		}
 	} else {
@@ -76,22 +76,22 @@ func (dbstorage *DBStorage) AddGaugeMetric(name string, value float64) error {
 		_, err := dbstorage.DB.ExecContext(dbstorage.Ctx, sqlStatement, value, name)
 		if err != nil {
 			log.Println("Error:", err)
-			// tx.Rollback()
+			tx.Rollback()
 			return err
 		}
 	}
 
 	log.Println("Saved")
-	return nil // tx.Commit()
+	return tx.Commit()
 }
 
 func (dbstorage *DBStorage) AddCounterMetric(name string, delta int64) error {
 	log.Println("In AddCounterMetric")
 	// начинаем транзакцию
-	// tx, err := dbstorage.DB.Begin()
-	// if err != nil {
-	// 	return err
-	// }
+	tx, err := dbstorage.DB.Begin()
+	if err != nil {
+		return err
+	}
 
 	oldDelta, ok, err := dbstorage.GetCounterMetric(name)
 	if err != nil {
@@ -106,7 +106,7 @@ func (dbstorage *DBStorage) AddCounterMetric(name string, delta int64) error {
 		if err != nil {
 			log.Println("Err ins:", err)
 			// если ошибка, то откатываем изменения
-			//tx.Rollback()
+			tx.Rollback()
 			return err
 		}
 	} else {
@@ -115,13 +115,13 @@ func (dbstorage *DBStorage) AddCounterMetric(name string, delta int64) error {
 		if err != nil {
 			log.Println("Error upd:", err)
 			// если ошибка, то откатываем изменения
-			//tx.Rollback()
+			tx.Rollback()
 			return err
 		}
 	}
 
 	// завершаем транзакцию
-	return nil // tx.Commit()
+	return tx.Commit()
 }
 
 func (dbstorage *DBStorage) GetAllCounterMetrics() (map[string]int64, error) {
