@@ -4,6 +4,7 @@ package metricservice
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -63,7 +64,7 @@ func (ms *MetricCollector) collectAllMetrics() ([]MetricRequest, error) {
 	return metrics, nil
 }
 
-type MetricsRequest []MetricRequest
+// type MetricsRequest []MetricRequest
 
 func (ms *MetricCollector) sendMultipleMetrics(metrics []MetricRequest) error {
 	url := fmt.Sprintf("http://%s/updates/", ms.config.Address)
@@ -72,7 +73,6 @@ func (ms *MetricCollector) sendMultipleMetrics(metrics []MetricRequest) error {
 
 	for i, chunk := range chunks {
 		log.Printf("Sending chunk %d of %d, chunk size %d\n", i+1, len(chunks), len(chunk))
-		// msr := MetricsRequest{Metrics: chunk}
 
 		data, err := json.Marshal(chunk)
 		if err != nil {
@@ -84,24 +84,67 @@ func (ms *MetricCollector) sendMultipleMetrics(metrics []MetricRequest) error {
 			return err
 		}
 
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			return err
+		delay := 1 // попытки через 1, 3, 5 сек
+		for i := 0; i < 4; i++ {
+			log.Printf("Sending %d attempt", i)
+			err = doSend(req)
+			if err == nil {
+				break
+			} else {
+				log.Printf("error while sending request: %v, is retriable: %v", err, isRetriableError(err))
+				if i == 3 || !isRetriableError(err) {
+					return err
+				}
+			}
+			<-time.NewTicker(time.Duration(delay) * time.Second).C
+			delay += 2
 		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("response is not OK, status: %d", resp.StatusCode)
-		}
-
 		log.Printf("chunk %d sent successfully", i+1)
 	}
 
 	return nil
 }
 
+type UnsuccessfulStatusError struct {
+	Message string
+	Status  int
+}
+
+func (ue UnsuccessfulStatusError) Error() string {
+	return ue.Message
+}
+
+// будем считать, что стоит повторить запрос, если у нас произошла проблема с запросом (Client.Do)
+// это мб. проблема с сетью, либо если у нас пришел ответ со статусом 500,
+// то есть сервер возможно сможет обработать в следующий раз
+func isRetriableError(err error) bool {
+	var statusErr *UnsuccessfulStatusError
+	if errors.As(err, &statusErr) {
+		return statusErr.Status == http.StatusInternalServerError
+	}
+	return true
+}
+
+func doSend(req *http.Request) error {
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		ue := UnsuccessfulStatusError{
+			Message: fmt.Sprintf("response is not OK, status: %d", resp.StatusCode),
+			Status:  resp.StatusCode, // статус, который пришел в ответе
+		}
+		// return fmt.Errorf("response is not OK, status: %d", resp.StatusCode)
+		return &ue
+	}
+	return nil
+}
+
 func rangeChunks(chunkSize int, metrics []MetricRequest) [][]MetricRequest {
-	// const chunkSize = 3
+
 	res := [][]MetricRequest{}
 
 	currentChunk := []MetricRequest{}
@@ -131,7 +174,10 @@ func (ms *MetricCollector) SendLoop(delay time.Duration, wg *sync.WaitGroup) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		ms.sendMultipleMetrics(metrics) //
+		err = ms.sendMultipleMetrics(metrics)
+		if err != nil {
+			log.Fatal(err) // паника после 3ей попытки или в случае не IsRetriableErr
+		}
 		ms.metricStorage.Reset()
 	}
 }

@@ -29,7 +29,7 @@ func main() {
 	var ms *memstorage.MemStorage
 
 	if config.DBParams != "" {
-		db, err := database.Connect(config.DBParams)
+		db, err := database.ConnectWithRerties(config.DBParams)
 		if err != nil {
 			log.Fatal(err)
 		}

@@ -24,7 +24,7 @@ func CreateTable(db *sql.DB, ctx context.Context) error { // metric_type_enum
 	return nil
 }
 
-func Connect(dbParams string) (*sql.DB, error) {
+func connect(dbParams string) (*sql.DB, error) {
 	log.Println("Connecting to DB", dbParams)
 	db, err := sql.Open("pgx", dbParams)
 	if err != nil {
@@ -39,4 +39,24 @@ func Connect(dbParams string) (*sql.DB, error) {
 		return nil, err
 	}
 	return db, nil
+}
+
+func ConnectWithRerties(dbParams string) (*sql.DB, error) {
+	delay := 1 // попытки через 1, 3, 5 сек
+	for i := 0; i < 4; i++ {
+		log.Printf("Sending %d attempt", i)
+		db, err := connect(dbParams)
+		if err == nil {
+			return db, nil
+		} else {
+			log.Printf("error while connecting to db: %v", err)
+			if i == 3 {
+				return nil, err
+			}
+		}
+		<-time.NewTicker(time.Duration(delay) * time.Second).C
+		delay += 2
+	}
+
+	return nil, nil
 }

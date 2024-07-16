@@ -293,15 +293,13 @@ func (mh *MetricHandlers) GetAllMetrics(w http.ResponseWriter, r *http.Request) 
 
 func (mh *MetricHandlers) CheckConnectionToDB(w http.ResponseWriter, r *http.Request) {
 	log.Println("Checking DB")
-	_, err := db.Connect(mh.Config.DBParams)
+	_, err := db.ConnectWithRerties(mh.Config.DBParams)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
 }
-
-type MetricsRequest []memstorage.Metric
 
 // принимает в теле запроса множество метрик в формате: []Metrics (списка метрик) в виде json
 func (mh *MetricHandlers) MetricsHandlerUpdate(w http.ResponseWriter, r *http.Request) {
@@ -310,7 +308,7 @@ func (mh *MetricHandlers) MetricsHandlerUpdate(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	var Metrics MetricsRequest
+	var Metrics []memstorage.Metric
 	var buf bytes.Buffer
 
 	// читаем тело запроса
@@ -334,7 +332,6 @@ func (mh *MetricHandlers) MetricsHandlerUpdate(w http.ResponseWriter, r *http.Re
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
-			// w.WriteHeader(http.StatusOK)
 
 			_, ok, err := mh.Storager.GetGaugeMetric(metric.ID)
 			if err != nil {
@@ -345,7 +342,6 @@ func (mh *MetricHandlers) MetricsHandlerUpdate(w http.ResponseWriter, r *http.Re
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
-			//w.WriteHeader(http.StatusOK)
 
 		case metric.MType == "counter":
 			err := mh.Storager.AddCounterMetric(metric.ID, *metric.Delta)
@@ -354,7 +350,6 @@ func (mh *MetricHandlers) MetricsHandlerUpdate(w http.ResponseWriter, r *http.Re
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
-			// w.WriteHeader(http.StatusOK)
 
 			_, ok, err := mh.Storager.GetCounterMetric(metric.ID)
 			if err != nil {
@@ -365,7 +360,6 @@ func (mh *MetricHandlers) MetricsHandlerUpdate(w http.ResponseWriter, r *http.Re
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
-			// w.WriteHeader(http.StatusOK)
 
 		default:
 			w.WriteHeader(http.StatusBadRequest)
