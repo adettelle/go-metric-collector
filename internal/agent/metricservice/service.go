@@ -79,15 +79,15 @@ func (ms *MetricCollector) sendMultipleMetrics(metrics []MetricRequest) error {
 			return err
 		}
 
-		req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
-		if err != nil {
-			return err
-		}
+		// req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
+		// if err != nil {
+		// 	return err
+		// }
 
 		delay := 1 // попытки через 1, 3, 5 сек
 		for i := 0; i < 4; i++ {
 			log.Printf("Sending %d attempt", i)
-			err = doSend(req)
+			err = doSend(url, bytes.NewBuffer(data))
 			log.Println("error in delay stack:", err)
 			if err == nil {
 				break
@@ -126,7 +126,12 @@ func isRetriableError(err error) bool {
 	return true
 }
 
-func doSend(req *http.Request) error {
+func doSend(url string, data *bytes.Buffer) error {
+	req, err := http.NewRequest(http.MethodPost, url, data)
+	if err != nil {
+		return err
+	}
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
