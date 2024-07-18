@@ -58,6 +58,18 @@ func (mh *MetricHandlers) JSONHandlerUpdate(w http.ResponseWriter, r *http.Reque
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	if mh.Config.Key != "" {
+		// вычисляем хеш и сравниваем в HTTP-заголовке запроса с именем HashSHA256
+		hash := security.CreateSign(buf.String(), mh.Config.Key)
+		if !hmac.Equal([]byte(hash), []byte(r.Header.Get("HashSHA256"))) { //  sign != r.Header.Get("HashSHA256") {
+			log.Println("The signature is incorrect")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		log.Println("The signature is authentic")
+	}
+
 	// десериализуем JSON в Metrric
 	if err := json.Unmarshal(buf.Bytes(), &metric); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
