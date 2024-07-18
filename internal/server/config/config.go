@@ -16,6 +16,7 @@ type Config struct {
 	StoragePath   string // по умолчанию /tmp/metrics-db.json
 	Restore       bool   // по умолчанию true
 	DBParams      string
+	Key           string
 }
 
 func New() (*Config, error) {
@@ -24,6 +25,7 @@ func New() (*Config, error) {
 	flagStoragePath := flag.String("f", "/tmp/metrics-db.json", "file storage path")
 	flagRestore := flag.Bool("r", true, "restore or not data from file storage path")
 	flagDBParams := flag.String("d", "", "db connection params")
+	flagKey := flag.String("k", "", "secret key")
 	// "host=host port=port user=myuser password=xxxx dbname=mydb sslmode=disable"
 	flag.Parse()
 
@@ -33,7 +35,16 @@ func New() (*Config, error) {
 		StoragePath:   getStoragePath(flagStoragePath),
 		Restore:       getRestore(flagRestore),
 		DBParams:      getDBParams(flagDBParams),
+		Key:           getKey(flagKey),
 	}, nil
+}
+
+func getKey(flagKey *string) string {
+	key := os.Getenv("KEY")
+	if key != "" {
+		return key
+	}
+	return *flagKey
 }
 
 func getAddr(flagAddr *string) string {

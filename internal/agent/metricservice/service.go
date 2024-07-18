@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/adettelle/go-metric-collector/internal/agent/config"
+	"github.com/adettelle/go-metric-collector/internal/security"
 	mstore "github.com/adettelle/go-metric-collector/internal/storage/memstorage"
 )
 
@@ -87,7 +88,7 @@ func (ms *MetricCollector) sendMultipleMetrics(metrics []MetricRequest) error {
 		delay := 1 // попытки через 1, 3, 5 сек
 		for i := 0; i < 4; i++ {
 			log.Printf("Sending %d attempt", i)
-			err = doSend(url, bytes.NewBuffer(data))
+			err = doSend(url, bytes.NewBuffer(data), ms.config.Key)
 			log.Println("error in delay stack:", err)
 			if err == nil {
 				break
@@ -126,11 +127,16 @@ func isRetriableError(err error) bool {
 	return true
 }
 
-func doSend(url string, data *bytes.Buffer) error {
+func doSend(url string, data *bytes.Buffer, key string) error {
 	req, err := http.NewRequest(http.MethodPost, url, data)
 	if err != nil {
 		return err
 	}
+
+	// вычисляем хеш и передаем в HTTP-заголовке запроса с именем HashSHA256
+	hash := security.CreateSign(data.String(), key)
+	log.Println(data.String(), string(hash))
+	req.Header.Set("HashSHA256", string(hash))
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

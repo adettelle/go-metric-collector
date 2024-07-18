@@ -13,16 +13,19 @@ type Config struct {
 	Address        string
 	ReportInterval int // по умолчанию 10 сек
 	PollInterval   int // по умолчанию 2 сек
+	Key            string
 }
 
 func New() (*Config, error) {
 	addr := os.Getenv("ADDRESS")
 	envPollInterval := os.Getenv("POLL_INTERVAL")
 	envReportInterval := os.Getenv("REPORT_INTERVAL")
+	envKey := os.Getenv("KEY")
 
 	flagAddr := flag.String("a", "localhost:8080", "Net address localhost:port")
 	flagPollInterval := flag.Int("p", 2, "metrics poll interval, seconds")
 	flagReportInterval := flag.Int("r", 10, "metrics report interval, seconds")
+	flagKey := flag.String("k", "", "secret key")
 	flag.Parse()
 
 	if addr == "" {
@@ -44,7 +47,18 @@ func New() (*Config, error) {
 		reportInterval = parseIntOrPanic(envPollInterval)
 	}
 
-	return &Config{Address: addr, ReportInterval: reportInterval, PollInterval: pollDelay}, nil
+	var key string
+	if envKey == "" {
+		key = *flagKey
+	} else {
+		key = envKey
+	}
+	return &Config{
+		Address:        addr,
+		ReportInterval: reportInterval,
+		PollInterval:   pollDelay,
+		Key:            key,
+	}, nil
 }
 
 func parseIntOrPanic(s string) int {

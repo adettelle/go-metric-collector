@@ -3,6 +3,7 @@ package api
 
 import (
 	"bytes"
+	"crypto/hmac"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -10,6 +11,7 @@ import (
 	"strconv"
 
 	"github.com/adettelle/go-metric-collector/internal/db"
+	"github.com/adettelle/go-metric-collector/internal/security"
 	"github.com/adettelle/go-metric-collector/internal/server/config"
 	"github.com/adettelle/go-metric-collector/internal/server/service"
 	"github.com/adettelle/go-metric-collector/internal/storage/memstorage"
@@ -317,6 +319,15 @@ func (mh *MetricHandlers) MetricsHandlerUpdate(w http.ResponseWriter, r *http.Re
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	// вычисляем хеш и сравниваем в HTTP-заголовке запроса с именем HashSHA256
+	hash := security.CreateSign(buf.String(), mh.Config.Key)
+	if !hmac.Equal([]byte(hash), []byte(r.Header.Get("HashSHA256"))) { //  sign != r.Header.Get("HashSHA256") {
+		log.Println("The signature is incorrect")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	log.Println("The signature is authentic")
+
 	// десериализуем JSON в Metrric
 	if err := json.Unmarshal(buf.Bytes(), &Metrics); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
