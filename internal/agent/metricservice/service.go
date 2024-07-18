@@ -149,10 +149,12 @@ func (ms *MetricService) doSend(data *bytes.Buffer) error {
 		return err
 	}
 
-	// вычисляем хеш и передаем в HTTP-заголовке запроса с именем HashSHA256
-	hash := security.CreateSign(data.String(), ms.encryptionKey)
-	log.Println(data.String(), string(hash))
-	req.Header.Set("HashSHA256", string(hash))
+	if ms.encryptionKey != "" {
+		// вычисляем хеш и передаем в HTTP-заголовке запроса с именем HashSHA256
+		hash := security.CreateSign(data.String(), ms.encryptionKey)
+		log.Println(data.String(), string(hash))
+		req.Header.Set("HashSHA256", string(hash))
+	}
 
 	resp, err := ms.client.Do(req) // http.DefaultClient.Do(req)
 	if err != nil {
