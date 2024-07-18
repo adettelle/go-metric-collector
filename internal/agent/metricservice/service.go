@@ -133,10 +133,12 @@ func doSend(url string, data *bytes.Buffer, key string) error {
 		return err
 	}
 
-	// вычисляем хеш и передаем в HTTP-заголовке запроса с именем HashSHA256
-	hash := security.CreateSign(data.String(), key)
-	log.Println(data.String(), string(hash))
-	req.Header.Set("HashSHA256", string(hash))
+	if key != "" {
+		// вычисляем хеш и передаем в HTTP-заголовке запроса с именем HashSHA256
+		hash := security.CreateSign(data.String(), key)
+		log.Println(data.String(), string(hash))
+		req.Header.Set("HashSHA256", string(hash))
+	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
