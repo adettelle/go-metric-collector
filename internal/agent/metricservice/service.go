@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/adettelle/go-metric-collector/internal/agent/config"
+	"github.com/adettelle/go-metric-collector/internal/security"
 	mstore "github.com/adettelle/go-metric-collector/internal/storage/memstorage"
 )
 
@@ -145,6 +146,16 @@ func (ms *MetricService) doSend(data *bytes.Buffer) error {
 	if err != nil {
 		return err
 	}
+
+	// вычисляем хеш и передаем в HTTP-заголовке запроса с именем HashSHA256
+	hash := security.CreateSign(data.String(), key)
+	log.Println(data.String(), string(hash))
+	req.Header.Set("HashSHA256", string(hash))
+
+	// вычисляем хеш и передаем в HTTP-заголовке запроса с именем HashSHA256
+	hash := security.CreateSign(data.String(), key)
+	log.Println(data.String(), string(hash))
+	req.Header.Set("HashSHA256", string(hash))
 
 	resp, err := ms.client.Do(req) // http.DefaultClient.Do(req)
 	if err != nil {
