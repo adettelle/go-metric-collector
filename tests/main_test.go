@@ -3,12 +3,14 @@ package tests
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
-	"github.com/adettelle/go-metric-collector/internal/handlers"
+	"github.com/adettelle/go-metric-collector/internal/api"
+	"github.com/adettelle/go-metric-collector/internal/server/config"
 	"github.com/adettelle/go-metric-collector/internal/storage/memstorage"
 	"github.com/stretchr/testify/assert"
 )
@@ -42,10 +44,20 @@ var metrics = []metric{
 	},
 }
 
+var Config *config.Config = &config.Config{
+	Address:       "localhost:8080",
+	StoreInterval: 5,
+	StoragePath:   "./test.json",
+	Restore:       false,
+}
+
 // var mStorage = storage.NewMemStorage()
 
 func TestAddCounterMetric(t *testing.T) {
-	ms := memstorage.New()
+	ms, err := memstorage.New(false, "")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	name := "someMetric"
 	var value int64 = 525
@@ -57,26 +69,29 @@ func TestAddCounterMetric(t *testing.T) {
 	assert.NotEqual(t, lenBeforeAdding, lenAfterAdding)
 
 	// проверка наличия метрики в map
-	val1, err := ms.GetCounterMetric(name)
+	val1, ok := ms.GetCounterMetric(name)
 	assert.Equal(t, value, val1)
-	assert.True(t, err)
+	assert.True(t, ok)
 
 	// проверка добавление уже сущ-ей метрики
 	ms.AddCounterMetric(name, value)
-	val2, err := ms.GetCounterMetric(name)
+	val2, ok := ms.GetCounterMetric(name)
 	assert.Equal(t, int64(1050), val2)
-	assert.True(t, err)
+	assert.True(t, ok)
 
 	// проверка получения несущ-ей метрики
 	unrealName := "UnrealMetric"
 	var zero int64 = 0
-	v, err := ms.GetCounterMetric(unrealName)
-	assert.False(t, err)
+	v, ok := ms.GetCounterMetric(unrealName)
+	assert.False(t, ok)
 	assert.Equal(t, v, zero)
 }
 
 func TestAddGaugeMetric(t *testing.T) {
-	ms := memstorage.New()
+	ms, err := memstorage.New(false, "")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	name := "someMetric"
 	var value float64 = 527
@@ -93,21 +108,21 @@ func TestAddGaugeMetric(t *testing.T) {
 	}
 
 	// проверка наличия метрики в map
-	val1, err := ms.GetGaugeMetric(name)
+	val1, ok := ms.GetGaugeMetric(name)
 	assert.Equal(t, value, val1)
-	assert.True(t, err)
+	assert.True(t, ok)
 
 	// проверка добавление уже сущ-ей метрики
 	ms.AddGaugeMetric(name, value)
-	val2, err := ms.GetGaugeMetric(name)
+	val2, ok := ms.GetGaugeMetric(name)
 	assert.Equal(t, value, val2) // при добавлении сущ-ей метрики метрика заменятеся на новую
-	assert.True(t, err)
+	assert.True(t, ok)
 
 	// проверка получения несущ-ей метрики
 	unrealName := "UnrealMetric"
 	var zero float64 = 0
-	v, err := ms.GetGaugeMetric(unrealName)
-	assert.False(t, err)
+	v, ok := ms.GetGaugeMetric(unrealName)
+	assert.False(t, ok)
 	assert.Equal(t, v, zero)
 }
 
@@ -127,8 +142,12 @@ func TestPostCounterMetric(t *testing.T) {
 }
 
 func testPostMetric(t *testing.T, request *http.Request, expectedStatus int, expectedBody string) *http.Response {
-	metricStore := memstorage.New()
-	mAPI := handlers.NewMetricAPI(metricStore)
+
+	metricStore, err := memstorage.New(false, "")
+	if err != nil {
+		log.Fatal(err)
+	}
+	mAPI := api.NewMetricHandlers(metricStore, Config)
 	w := httptest.NewRecorder()
 	mAPI.CreateMetric(w, request)
 
@@ -176,8 +195,12 @@ const tmpl = `
 	`
 
 func TestGetAllMetrics(t *testing.T) {
-	metricStore := memstorage.New()
-	metricAPI := handlers.NewMetricAPI(metricStore)
+
+	metricStore, err := memstorage.New(false, "")
+	if err != nil {
+		log.Fatal(err)
+	}
+	metricAPI := api.NewMetricHandlers(metricStore, Config)
 	metricStore.AddCounterMetric("C1", 123)
 	metricStore.AddCounterMetric("C1", 456)
 	metricStore.AddGaugeMetric("G1", 123)
@@ -201,7 +224,7 @@ func TestGetAllMetrics(t *testing.T) {
 }
 
 // http://localhost:8080/value/counter/HeapAlloc
-func testGetValue(mType, mName string, mAPI *handlers.MetricAPI) (string, int) {
+func testGetValue(mType, mName string, mAPI *api.MetricHandlers) (string, int) {
 
 	w := httptest.NewRecorder()
 	//defer w.Result().Body.Close()
@@ -221,8 +244,12 @@ func testGetValue(mType, mName string, mAPI *handlers.MetricAPI) (string, int) {
 	return w.Body.String(), code
 }
 func TestGetMetricByValue(t *testing.T) {
-	metricStore := memstorage.New()
-	mAPI := handlers.NewMetricAPI(metricStore)
+
+	metricStore, err := memstorage.New(false, "")
+	if err != nil {
+		log.Fatal(err)
+	}
+	mAPI := api.NewMetricHandlers(metricStore, Config)
 
 	metricStore.AddCounterMetric("C1", 123)
 	metricStore.AddCounterMetric("C1", 456)
