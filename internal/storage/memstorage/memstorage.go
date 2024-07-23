@@ -58,13 +58,14 @@ func New(shouldRestore bool, storagePath string) (*MemStorage, error) {
 		if err != nil {
 			return nil, err
 		}
+		ms.FileName = storagePath
 		return ms, nil
 	}
 
 	gauge := make(map[string]float64)
 	counter := make(map[string]int64)
 
-	ms := &MemStorage{Gauge: gauge, Counter: counter}
+	ms := &MemStorage{Gauge: gauge, Counter: counter, FileName: storagePath}
 
 	// if storeInterval > 0 {
 	// 	go StartSaveLoop(time.Second*time.Duration(storeInterval), storagePath, ms)
@@ -175,5 +176,6 @@ func AllMetricsToMemStorage(am *AllMetrics) (*MemStorage, error) {
 // процесс финализации: объекты могут делать работу, пользоваться ресурсамии,
 // и при заверщении работы (без работы с БД или с файлом), надо содержимое memStorage записать на диск (в файл)
 func (ms *MemStorage) Finalize() error {
+	log.Println("ms.FileName:", ms.FileName)
 	return WriteMetricsSnapshot(ms.FileName, ms)
 }

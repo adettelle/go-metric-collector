@@ -54,6 +54,7 @@ func main() {
 
 		err = storager.Finalize() // memstorage.WriteMetricsSnapshot(config.StoragePath, ms)
 		if err != nil {
+			log.Println(err)
 			log.Println("unable to write to file")
 		}
 		done <- true
@@ -64,6 +65,7 @@ func main() {
 // init потому что он не только конструирует, но и запускает сопутсвующие процессы
 // в зависимости от того, какой storager мы выбрали
 func initStorager(config *config.Config) (api.Storager, error) {
+	log.Println("config in initStorager:", config)
 	var storager api.Storager
 
 	if config.DBParams != "" {
@@ -82,13 +84,16 @@ func initStorager(config *config.Config) (api.Storager, error) {
 		}
 	} else {
 		var ms *memstorage.MemStorage
+		log.Println("config.StoragePath in initStorager:", config.StoragePath)
 		ms, err := memstorage.New(config.ShouldRestore(), config.StoragePath)
+		log.Println("ms.StoragePath in initStorager:", ms.FileName)
 		if err != nil {
 			return nil, err
 		}
 
 		if config.StoreInterval > 0 {
-			go memstorage.StartSaveLoop(time.Second*time.Duration(config.StoreInterval), config.StoragePath, ms)
+			go memstorage.StartSaveLoop(time.Second*time.Duration(config.StoreInterval),
+				config.StoragePath, ms)
 		} else if config.StoreInterval == 0 {
 			// если config.StoreInterval равен 0, то мы назначаем MemStorage FileName, чтобы
 			// он мог синхронно писать изменения
