@@ -21,9 +21,10 @@ import (
 type MetricService struct { // MetricCollector
 	// config *config.Config // был нужен только для генерации url
 	// store         StorageInterfase
-	metricStorage *mstore.MemStorage
-	client        *http.Client
-	url           string
+	metricStorage     *mstore.MemStorage
+	client            *http.Client
+	url               string
+	maxRequestRetries int
 }
 
 func NewMetricService(config *config.Config, metricStorage *mstore.MemStorage, client *http.Client) *MetricService { // store StorageInterfase,
@@ -31,9 +32,10 @@ func NewMetricService(config *config.Config, metricStorage *mstore.MemStorage, c
 	return &MetricService{
 		// config: config,
 		// store:         store,
-		metricStorage: metricStorage,
-		client:        client,
-		url:           fmt.Sprintf("http://%s/updates/", config.Address),
+		metricStorage:     metricStorage,
+		client:            client,
+		url:               fmt.Sprintf("http://%s/updates/", config.Address),
+		maxRequestRetries: config.MaxRequestRetries,
 	}
 }
 
@@ -98,7 +100,7 @@ func (ms *MetricService) sendMultipleMetrics(metrics []MetricRequest) error {
 		// }
 
 		delay := 1 // попытки через 1, 3, 5 сек
-		for i := 0; i < 4; i++ {
+		for i := 0; i < ms.maxRequestRetries+1; i++ {
 			log.Printf("Sending %d attempt", i)
 			err = ms.doSend(bytes.NewBuffer(data))
 			if err == nil {
