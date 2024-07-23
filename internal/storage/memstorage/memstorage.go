@@ -51,10 +51,10 @@ func (ms *MemStorage) Reset() {
 	}
 }
 
-func New(shouldRestore bool, storagePath string, storeInterval int) (*MemStorage, error) {
+func New(shouldRestore bool, storagePath string) (*MemStorage, error) {
 
 	if shouldRestore {
-		ms, err := ReadMetricsSnapshot(storagePath, storeInterval)
+		ms, err := ReadMetricsSnapshot(storagePath)
 		if err != nil {
 			return nil, err
 		}
@@ -152,8 +152,8 @@ func MemStorageToAllMetrics(ms *MemStorage) AllMetrics {
 	return am
 }
 
-func AllMetricsToMemStorage(am *AllMetrics, storeInterval int) (*MemStorage, error) {
-	ms, err := New(false, "", storeInterval)
+func AllMetricsToMemStorage(am *AllMetrics) (*MemStorage, error) {
+	ms, err := New(false, "")
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -82,7 +82,7 @@ func initStorager(config *config.Config) (api.Storager, error) {
 		}
 	} else {
 		var ms *memstorage.MemStorage
-		ms, err := memstorage.New(config.ShouldRestore(), config.StoragePath, config.StoreInterval)
+		ms, err := memstorage.New(config.ShouldRestore(), config.StoragePath)
 		if err != nil {
 			return nil, err
 		}
