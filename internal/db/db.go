@@ -44,7 +44,7 @@ func connect(dbParams string) (*sql.DB, error) {
 func ConnectWithRerties(dbParams string) (*sql.DB, error) {
 	delay := 1 // попытки через 1, 3, 5 сек
 	for i := 0; i < 4; i++ {
-		log.Printf("Sending %d attempt", i)
+		log.Printf("Connecting to DB: attempt %d\n", i)
 		db, err := connect(dbParams)
 		if err == nil {
 			return db, nil
