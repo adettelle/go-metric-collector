@@ -25,7 +25,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	mservice := metricservice.NewMetricCollector(config, metricsStorage)
+	mservice := metricservice.NewMetricService(config, metricsStorage)
 
 	var wg sync.WaitGroup
 	wg.Add(2)

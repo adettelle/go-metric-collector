@@ -18,15 +18,15 @@ import (
 )
 
 // Структура MetricCollector получает и рассылает метрики, запускает свои циклы (Loop)
-type MetricCollector struct {
+type MetricService struct { // MetricCollector
 	config *config.Config
 	// store         StorageInterfase
 	metricStorage *mstore.MemStorage
 }
 
-func NewMetricCollector(config *config.Config, metricStorage *mstore.MemStorage) *MetricCollector { // store StorageInterfase,
+func NewMetricService(config *config.Config, metricStorage *mstore.MemStorage) *MetricService { // store StorageInterfase,
 
-	return &MetricCollector{
+	return &MetricService{
 		config: config,
 		// store:         store,
 		metricStorage: metricStorage,
@@ -40,11 +40,15 @@ type MetricRequest struct {
 	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
 }
 
-func (mc *MetricCollector) collectAllMetrics() ([]MetricRequest, error) {
+func (ms *MetricService) collectAllMetrics() ([]MetricRequest, error) {
 
 	var metrics []MetricRequest
 
-	for name, value := range mc.metricStorage.Gauge {
+	gaugeMetrics, err := ms.metricStorage.GetAllGaugeMetrics()
+	if err != nil {
+		return nil, err
+	}
+	for name, value := range gaugeMetrics {
 		metric := MetricRequest{
 			MType: "gauge",
 			ID:    name,
@@ -52,7 +56,12 @@ func (mc *MetricCollector) collectAllMetrics() ([]MetricRequest, error) {
 		}
 		metrics = append(metrics, metric)
 	}
-	for name, delta := range mc.metricStorage.Counter {
+
+	counterMetrics, err := ms.metricStorage.GetAllCounterMetrics()
+	if err != nil {
+		return nil, err
+	}
+	for name, delta := range counterMetrics {
 		metric := MetricRequest{
 			MType: "counter",
 			ID:    name,
@@ -66,8 +75,8 @@ func (mc *MetricCollector) collectAllMetrics() ([]MetricRequest, error) {
 
 // type MetricsRequest []MetricRequest
 
-func (mc *MetricCollector) sendMultipleMetrics(metrics []MetricRequest) error {
-	url := fmt.Sprintf("http://%s/updates/", mc.config.Address)
+func (ms *MetricService) sendMultipleMetrics(metrics []MetricRequest) error {
+	url := fmt.Sprintf("http://%s/updates/", ms.config.Address)
 
 	chunks := rangeChunks(10, metrics)
 
@@ -169,71 +178,71 @@ func rangeChunks(chunkSize int, metrics []MetricRequest) [][]MetricRequest {
 }
 
 // sendLoop sends all metrics to the server (MemStorage) with delay
-func (mc *MetricCollector) SendLoop(delay time.Duration, wg *sync.WaitGroup) {
+func (ms *MetricService) SendLoop(delay time.Duration, wg *sync.WaitGroup) {
 	defer wg.Done()
 	ticker := time.NewTicker(time.Second * delay)
 
 	for range ticker.C {
 		log.Println("Sending metrics")
 		// err := ms.sendAllMetrics()
-		metrics, err := mc.collectAllMetrics() //
+		metrics, err := ms.collectAllMetrics() //
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = mc.sendMultipleMetrics(metrics)
+		err = ms.sendMultipleMetrics(metrics)
 		if err != nil {
 			log.Fatal(err) // паника после 3ей попытки или в случае не IsRetriableErr
 		}
-		mc.metricStorage.Reset()
+		ms.metricStorage.Reset()
 	}
 }
 
 // retrieveLoop gets all metrics from MemStorage to the server with delay
-func (mc *MetricCollector) RetrieveLoop(delay time.Duration, wg *sync.WaitGroup) {
+func (ms *MetricService) RetrieveLoop(delay time.Duration, wg *sync.WaitGroup) {
 	defer wg.Done()
 	ticker := time.NewTicker(time.Second * delay)
 
 	for range ticker.C {
 		log.Println("Retrieving metrics")
-		mc.retrieveAllMetrics()
+		ms.retrieveAllMetrics()
 	}
 }
 
 // retrieveAllMetrics получает все метрики из пакета runtime
 // и собирает дополнительные метрики (PollCount и RandomValue)
-func (mc *MetricCollector) retrieveAllMetrics() {
+func (ms *MetricService) retrieveAllMetrics() {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 
-	mc.metricStorage.AddCounterMetric("PollCount", 1)
+	ms.metricStorage.AddCounterMetric("PollCount", 1)
 
-	mc.metricStorage.AddGaugeMetric("RandomValue", rand.Float64())
+	ms.metricStorage.AddGaugeMetric("RandomValue", rand.Float64())
 
-	mc.metricStorage.AddGaugeMetric("Alloc", float64(m.Alloc))
-	mc.metricStorage.AddGaugeMetric("BuckHashSys", float64(m.BuckHashSys))
-	mc.metricStorage.AddGaugeMetric("Frees", float64(m.Frees))
-	mc.metricStorage.AddGaugeMetric("GCCPUFraction", m.GCCPUFraction)
-	mc.metricStorage.AddGaugeMetric("GCSys", float64(m.GCSys))
-	mc.metricStorage.AddGaugeMetric("HeapAlloc", float64(m.HeapAlloc))
-	mc.metricStorage.AddGaugeMetric("HeapIdle", float64(m.HeapIdle))
-	mc.metricStorage.AddGaugeMetric("HeapInuse", float64(m.HeapInuse))
-	mc.metricStorage.AddGaugeMetric("HeapObjects", float64(m.HeapObjects))
-	mc.metricStorage.AddGaugeMetric("HeapReleased", float64(m.HeapReleased))
-	mc.metricStorage.AddGaugeMetric("HeapSys", float64(m.HeapSys))
-	mc.metricStorage.AddGaugeMetric("LastGC", float64(m.LastGC))
-	mc.metricStorage.AddGaugeMetric("Lookups", float64(m.Lookups))
-	mc.metricStorage.AddGaugeMetric("MCacheInuse", float64(m.MCacheInuse))
-	mc.metricStorage.AddGaugeMetric("MCacheSys", float64(m.MCacheSys))
-	mc.metricStorage.AddGaugeMetric("MSpanInuse", float64(m.MSpanInuse))
-	mc.metricStorage.AddGaugeMetric("MSpanSys", float64(m.MSpanSys))
-	mc.metricStorage.AddGaugeMetric("Mallocs", float64(m.Mallocs))
-	mc.metricStorage.AddGaugeMetric("NextGC", float64(m.NextGC))
-	mc.metricStorage.AddGaugeMetric("NumForcedGC", float64(m.NumForcedGC))
-	mc.metricStorage.AddGaugeMetric("NumGC", float64(m.NumGC))
-	mc.metricStorage.AddGaugeMetric("OtherSys", float64(m.OtherSys))
-	mc.metricStorage.AddGaugeMetric("PauseTotalNs", float64(m.PauseTotalNs))
-	mc.metricStorage.AddGaugeMetric("StackInuse", float64(m.StackInuse))
-	mc.metricStorage.AddGaugeMetric("StackSys", float64(m.StackSys))
-	mc.metricStorage.AddGaugeMetric("Sys", float64(m.Sys))
-	mc.metricStorage.AddGaugeMetric("TotalAlloc", float64(m.TotalAlloc))
+	ms.metricStorage.AddGaugeMetric("Alloc", float64(m.Alloc))
+	ms.metricStorage.AddGaugeMetric("BuckHashSys", float64(m.BuckHashSys))
+	ms.metricStorage.AddGaugeMetric("Frees", float64(m.Frees))
+	ms.metricStorage.AddGaugeMetric("GCCPUFraction", m.GCCPUFraction)
+	ms.metricStorage.AddGaugeMetric("GCSys", float64(m.GCSys))
+	ms.metricStorage.AddGaugeMetric("HeapAlloc", float64(m.HeapAlloc))
+	ms.metricStorage.AddGaugeMetric("HeapIdle", float64(m.HeapIdle))
+	ms.metricStorage.AddGaugeMetric("HeapInuse", float64(m.HeapInuse))
+	ms.metricStorage.AddGaugeMetric("HeapObjects", float64(m.HeapObjects))
+	ms.metricStorage.AddGaugeMetric("HeapReleased", float64(m.HeapReleased))
+	ms.metricStorage.AddGaugeMetric("HeapSys", float64(m.HeapSys))
+	ms.metricStorage.AddGaugeMetric("LastGC", float64(m.LastGC))
+	ms.metricStorage.AddGaugeMetric("Lookups", float64(m.Lookups))
+	ms.metricStorage.AddGaugeMetric("MCacheInuse", float64(m.MCacheInuse))
+	ms.metricStorage.AddGaugeMetric("MCacheSys", float64(m.MCacheSys))
+	ms.metricStorage.AddGaugeMetric("MSpanInuse", float64(m.MSpanInuse))
+	ms.metricStorage.AddGaugeMetric("MSpanSys", float64(m.MSpanSys))
+	ms.metricStorage.AddGaugeMetric("Mallocs", float64(m.Mallocs))
+	ms.metricStorage.AddGaugeMetric("NextGC", float64(m.NextGC))
+	ms.metricStorage.AddGaugeMetric("NumForcedGC", float64(m.NumForcedGC))
+	ms.metricStorage.AddGaugeMetric("NumGC", float64(m.NumGC))
+	ms.metricStorage.AddGaugeMetric("OtherSys", float64(m.OtherSys))
+	ms.metricStorage.AddGaugeMetric("PauseTotalNs", float64(m.PauseTotalNs))
+	ms.metricStorage.AddGaugeMetric("StackInuse", float64(m.StackInuse))
+	ms.metricStorage.AddGaugeMetric("StackSys", float64(m.StackSys))
+	ms.metricStorage.AddGaugeMetric("Sys", float64(m.Sys))
+	ms.metricStorage.AddGaugeMetric("TotalAlloc", float64(m.TotalAlloc))
 }
