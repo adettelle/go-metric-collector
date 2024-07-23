@@ -19,17 +19,21 @@ import (
 
 // Структура MetricCollector получает и рассылает метрики, запускает свои циклы (Loop)
 type MetricService struct { // MetricCollector
-	config *config.Config
+	// config *config.Config // был нужен только для генерации url
 	// store         StorageInterfase
 	metricStorage *mstore.MemStorage
+	client        *http.Client
+	url           string
 }
 
-func NewMetricService(config *config.Config, metricStorage *mstore.MemStorage) *MetricService { // store StorageInterfase,
+func NewMetricService(config *config.Config, metricStorage *mstore.MemStorage, client *http.Client) *MetricService { // store StorageInterfase,
 
 	return &MetricService{
-		config: config,
+		// config: config,
 		// store:         store,
 		metricStorage: metricStorage,
+		client:        client,
+		url:           fmt.Sprintf("http://%s/updates/", config.Address),
 	}
 }
 
@@ -76,7 +80,7 @@ func (ms *MetricService) collectAllMetrics() ([]MetricRequest, error) {
 // type MetricsRequest []MetricRequest
 
 func (ms *MetricService) sendMultipleMetrics(metrics []MetricRequest) error {
-	url := fmt.Sprintf("http://%s/updates/", ms.config.Address)
+	// url := fmt.Sprintf("http://%s/updates/", ms.config.Address)
 
 	chunks := rangeChunks(10, metrics)
 
@@ -96,7 +100,7 @@ func (ms *MetricService) sendMultipleMetrics(metrics []MetricRequest) error {
 		delay := 1 // попытки через 1, 3, 5 сек
 		for i := 0; i < 4; i++ {
 			log.Printf("Sending %d attempt", i)
-			err = doSend(url, bytes.NewBuffer(data))
+			err = ms.doSend(bytes.NewBuffer(data))
 			if err == nil {
 				break
 			} else {
@@ -134,13 +138,13 @@ func isRetriableError(err error) bool {
 	return true
 }
 
-func doSend(url string, data *bytes.Buffer) error {
-	req, err := http.NewRequest(http.MethodPost, url, data)
+func (ms *MetricService) doSend(data *bytes.Buffer) error {
+	req, err := http.NewRequest(http.MethodPost, ms.url, data)
 	if err != nil {
 		return err
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := ms.client.Do(req) // http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}
