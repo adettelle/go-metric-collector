@@ -146,6 +146,7 @@ func doSend(url string, data *bytes.Buffer) error {
 		// return fmt.Errorf("response is not OK, status: %d", resp.StatusCode)
 		return &ue
 	}
+
 	return nil
 }
 
