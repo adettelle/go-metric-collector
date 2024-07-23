@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/adettelle/go-metric-collector/internal/api"
 	database "github.com/adettelle/go-metric-collector/internal/db"
@@ -84,6 +85,14 @@ func initStorager(config *config.Config) (api.Storager, error) {
 		ms, err := memstorage.New(config.ShouldRestore(), config.StoragePath, config.StoreInterval)
 		if err != nil {
 			return nil, err
+		}
+
+		if config.StoreInterval > 0 {
+			go memstorage.StartSaveLoop(time.Second*time.Duration(config.StoreInterval), config.StoragePath, ms)
+		} else if config.StoreInterval == 0 {
+			// если config.StoreInterval равен 0, то мы назначаем MemStorage FileName, чтобы
+			// он мог синхронно писать изменения
+			ms.FileName = config.StoragePath
 		}
 
 		storager = ms

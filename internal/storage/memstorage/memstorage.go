@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"sync"
-	"time"
 )
 
 type Metric struct {
@@ -67,13 +66,13 @@ func New(shouldRestore bool, storagePath string, storeInterval int) (*MemStorage
 
 	ms := &MemStorage{Gauge: gauge, Counter: counter}
 
-	if storeInterval > 0 {
-		go StartSaveLoop(time.Second*time.Duration(storeInterval), storagePath, ms)
-	} else if storeInterval == 0 {
-		// если config.StoreInterval равен 0, то мы назначаем MemStorage FileName, чтобы
-		// он мог синхронно писать изменения
-		ms.FileName = storagePath
-	}
+	// if storeInterval > 0 {
+	// 	go StartSaveLoop(time.Second*time.Duration(storeInterval), storagePath, ms)
+	// } else if storeInterval == 0 {
+	// 	// если config.StoreInterval равен 0, то мы назначаем MemStorage FileName, чтобы
+	// 	// он мог синхронно писать изменения
+	// 	ms.FileName = storagePath
+	// }
 
 	return ms, nil
 }
