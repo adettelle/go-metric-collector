@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"time"
 
 	"github.com/adettelle/go-metric-collector/internal/api"
 	database "github.com/adettelle/go-metric-collector/internal/db"
@@ -25,42 +24,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	var storager api.Storager
-	var ms *memstorage.MemStorage
-
-	if config.DBParams != "" {
-		db, err := database.ConnectWithRerties(config.DBParams)
-		if err != nil {
-			log.Fatal(err)
-		}
-		storager = &dbstorage.DBStorage{
-			Ctx: context.Background(),
-			DB:  db,
-		}
-
-		err = database.CreateTable(db, context.Background())
-		if err != nil {
-			log.Fatal(err)
-		}
-	} else {
-		ms, err = memstorage.New(config.ShouldRestore(), config.StoragePath)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		storager = ms
-
-		if config.StoreInterval > 0 {
-			go memstorage.StartSaveLoop(time.Second*time.Duration(config.StoreInterval),
-				config.StoragePath, ms)
-		} else if config.StoreInterval == 0 {
-			// если config.StoreInterval равен 0, то мы назначаем MemStorage FileName, чтобы
-			// он мог синхронно писать изменения
-			ms.FileName = config.StoragePath
-		}
-	}
-
 	log.Println("config:", config)
+
+	storager, err := initStorager(config)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	go func() {
 		fmt.Printf("Starting server on %s\n", config.Address)
@@ -82,11 +51,43 @@ func main() {
 		s := <-c
 		log.Printf("Got termination signal: %s. Graceful shutdown", s)
 
-		err = memstorage.WriteMetricsSnapshot(config.StoragePath, ms)
+		err = storager.Finalize() // memstorage.WriteMetricsSnapshot(config.StoragePath, ms)
 		if err != nil {
 			log.Println("unable to write to file")
 		}
 		done <- true
 	}()
 	<-done
+}
+
+// init потому что он не только конструирует, но и запускает сопутсвующие процессы
+// в зависимости от того, какой storager мы выбрали
+func initStorager(config *config.Config) (api.Storager, error) {
+	var storager api.Storager
+
+	if config.DBParams != "" {
+		db, err := database.ConnectWithRerties(config.DBParams)
+		if err != nil {
+			log.Fatal(err)
+		}
+		storager = &dbstorage.DBStorage{
+			Ctx: context.Background(),
+			DB:  db,
+		}
+
+		err = database.CreateTable(db, context.Background())
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		var ms *memstorage.MemStorage
+		ms, err := memstorage.New(config.ShouldRestore(), config.StoragePath, config.StoreInterval)
+		if err != nil {
+			return nil, err
+		}
+
+		storager = ms
+
+	}
+	return storager, nil
 }

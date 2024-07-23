@@ -14,7 +14,8 @@ import (
 )
 
 func main() {
-	metricsStorage, err := memstorage.New(false, "")
+
+	metricsStorage, err := memstorage.New(false, "", 0)
 	if err != nil {
 		log.Fatal(err)
 	}

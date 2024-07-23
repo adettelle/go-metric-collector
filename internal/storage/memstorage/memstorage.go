@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
 )
 
 type Metric struct {
@@ -51,10 +52,10 @@ func (ms *MemStorage) Reset() {
 	}
 }
 
-func New(shouldRestore bool, storagePath string) (*MemStorage, error) {
+func New(shouldRestore bool, storagePath string, storeInterval int) (*MemStorage, error) {
 
 	if shouldRestore {
-		ms, err := ReadMetricsSnapshot(storagePath)
+		ms, err := ReadMetricsSnapshot(storagePath, storeInterval)
 		if err != nil {
 			return nil, err
 		}
@@ -63,7 +64,18 @@ func New(shouldRestore bool, storagePath string) (*MemStorage, error) {
 
 	gauge := make(map[string]float64)
 	counter := make(map[string]int64)
-	return &MemStorage{Gauge: gauge, Counter: counter}, nil
+
+	ms := &MemStorage{Gauge: gauge, Counter: counter}
+
+	if storeInterval > 0 {
+		go StartSaveLoop(time.Second*time.Duration(storeInterval), storagePath, ms)
+	} else if storeInterval == 0 {
+		// если config.StoreInterval равен 0, то мы назначаем MemStorage FileName, чтобы
+		// он мог синхронно писать изменения
+		ms.FileName = storagePath
+	}
+
+	return ms, nil
 }
 
 func (ms *MemStorage) GetGaugeMetric(name string) (float64, bool, error) {
@@ -141,8 +153,8 @@ func MemStorageToAllMetrics(ms *MemStorage) AllMetrics {
 	return am
 }
 
-func AllMetricsToMemStorage(am *AllMetrics) (*MemStorage, error) {
-	ms, err := New(false, "")
+func AllMetricsToMemStorage(am *AllMetrics, storeInterval int) (*MemStorage, error) {
+	ms, err := New(false, "", storeInterval)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -158,4 +170,11 @@ func AllMetricsToMemStorage(am *AllMetrics) (*MemStorage, error) {
 	}
 
 	return ms, nil
+}
+
+// отрабатывает завершение приложения (при штатном завершении работы)
+// процесс финализации: объекты могут делать работу, пользоваться ресурсамии,
+// и при заверщении работы (без работы с БД или с файлом), надо содержимое memStorage записать на диск (в файл)
+func (ms *MemStorage) Finalize() error {
+	return WriteMetricsSnapshot(ms.FileName, ms)
 }

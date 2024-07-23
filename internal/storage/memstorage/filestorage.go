@@ -42,7 +42,7 @@ func WriteMetricsSnapshot(fileName string, ms *MemStorage) error {
 }
 
 // читаем из файла и записываем в Storage
-func ReadMetricsSnapshot(fileName string) (*MemStorage, error) {
+func ReadMetricsSnapshot(fileName string, storeInterval int) (*MemStorage, error) {
 	// открываем файл для чтения
 	jsonFile, err := os.OpenFile(fileName, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
@@ -73,7 +73,7 @@ func ReadMetricsSnapshot(fileName string) (*MemStorage, error) {
 		return nil, err
 	}
 
-	return AllMetricsToMemStorage(&allMetrics)
+	return AllMetricsToMemStorage(&allMetrics, storeInterval)
 }
 
 func StartSaveLoop(storeInterval time.Duration, storagePath string, ms *MemStorage) {

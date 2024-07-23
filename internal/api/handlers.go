@@ -23,6 +23,7 @@ type Storager interface {
 	AddCounterMetric(name string, value int64) error
 	GetAllGaugeMetrics() (map[string]float64, error)
 	GetAllCounterMetrics() (map[string]int64, error)
+	Finalize() error // отрабатывает завершение приложения (при штатном завершении работы)
 }
 
 type MetricHandlers struct { // было MetricAPI

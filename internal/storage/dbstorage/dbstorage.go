@@ -179,3 +179,7 @@ func (dbstorage *DBStorage) GetAllGaugeMetrics() (map[string]float64, error) {
 
 	return res, nil
 }
+
+func (dbstorage *DBStorage) Finalize() error {
+	return nil
+}

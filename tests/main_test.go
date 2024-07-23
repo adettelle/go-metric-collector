@@ -54,7 +54,7 @@ var Config *config.Config = &config.Config{
 // var mStorage = storage.NewMemStorage()
 
 func TestAddCounterMetric(t *testing.T) {
-	ms, err := memstorage.New(false, "")
+	ms, err := memstorage.New(false, "", 0)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func TestAddCounterMetric(t *testing.T) {
 }
 
 func TestAddGaugeMetric(t *testing.T) {
-	ms, err := memstorage.New(false, "")
+	ms, err := memstorage.New(false, "", 0)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -149,7 +149,7 @@ func TestPostCounterMetric(t *testing.T) {
 
 func testPostMetric(t *testing.T, request *http.Request, expectedStatus int, expectedBody string) *http.Response {
 
-	metricStore, err := memstorage.New(false, "")
+	metricStore, err := memstorage.New(false, "", 0)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -202,7 +202,7 @@ const tmpl = `
 
 func TestGetAllMetrics(t *testing.T) {
 
-	metricStore, err := memstorage.New(false, "")
+	metricStore, err := memstorage.New(false, "", 0)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -251,7 +251,7 @@ func testGetValue(mType, mName string, mAPI *api.MetricHandlers) (string, int) {
 }
 func TestGetMetricByValue(t *testing.T) {
 
-	metricStore, err := memstorage.New(false, "")
+	metricStore, err := memstorage.New(false, "", 0)
 	if err != nil {
 		log.Fatal(err)
 	}
