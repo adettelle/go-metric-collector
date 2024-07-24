@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/adettelle/go-metric-collector/pkg"
+	"github.com/adettelle/go-metric-collector/pkg/compressor"
 )
 
 func GzipMiddleware(h http.HandlerFunc) http.HandlerFunc {

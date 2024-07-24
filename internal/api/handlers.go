@@ -16,6 +16,8 @@ import (
 )
 
 // интерфейс для взаимодействия с хранилищем MemStorage и другими хранилищами, напрмер, fileStorage
+// интерфейс описывает абстракцию хранения
+// (возможность положить, взять, посмотреть наличие, удалить) сущности "метрика"
 type Storager interface {
 	GetGaugeMetric(name string) (float64, bool, error)
 	GetCounterMetric(name string) (int64, bool, error)
