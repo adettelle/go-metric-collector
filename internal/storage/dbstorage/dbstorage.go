@@ -82,7 +82,7 @@ func (dbstorage *DBStorage) AddGaugeMetric(name string, value float64) error {
 	// }
 
 	sqlStatement := `insert into metric (metric_type, metric_id, value) 
-		values ('gauge', $1, $2) on conflict (metric_id) do update set value = $2`
+		values ('gauge', $1, $2) on conflict (metric_id, metric_type) do update set value = $2`
 
 	_, err := dbstorage.DB.ExecContext(dbstorage.Ctx, sqlStatement, name, value)
 	if err != nil {
@@ -131,8 +131,8 @@ func (dbstorage *DBStorage) AddCounterMetric(name string, delta int64) error {
 
 	sqlStatement := `insert into metric (metric_type, metric_id, delta)
 		values ('counter', $1, $2)
-		on conflict (metric_id) do update set
-		delta = (select delta from metric where metric_id = $1) + $2`
+		on conflict (metric_id, metric_type) do update set
+		delta = (select delta from metric where metric_type = 'counter' and metric_id = $1) + $2`
 
 	_, err := dbstorage.DB.ExecContext(dbstorage.Ctx, sqlStatement, name, delta)
 	if err != nil {
