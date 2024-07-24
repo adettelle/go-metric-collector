@@ -62,10 +62,14 @@ func TestAddCounterMetric(t *testing.T) {
 	name := "someMetric"
 	var value int64 = 525
 
+	cms, err := ms.GetAllCounterMetrics()
+	assert.Nil(t, err)
+	lenBeforeAdding := len(cms)
 	// записали метрику в хранилище
-	lenBeforeAdding := len(ms.Counter)
 	ms.AddCounterMetric(name, value)
-	lenAfterAdding := len(ms.Counter)
+	cmsAfter, err := ms.GetAllCounterMetrics()
+	assert.Nil(t, err)
+	lenAfterAdding := len(cmsAfter)
 	assert.NotEqual(t, lenBeforeAdding, lenAfterAdding)
 
 	// проверка наличия метрики в map
@@ -99,13 +103,19 @@ func TestAddGaugeMetric(t *testing.T) {
 	name := "someMetric"
 	var value float64 = 527
 
+	gms, err := ms.GetAllGaugeMetrics()
+	assert.Nil(t, err)
+	lenBeforeAdding := len(gms) // len(ms.Gauge)
 	// записали метрику в хранилище
-	lenBeforeAdding := len(ms.Gauge)
 	ms.AddGaugeMetric(name, value)
-	lenAfterAdding := len(ms.Gauge)
+	gmsAfter, err := ms.GetAllGaugeMetrics()
+	assert.Nil(t, err)
+	lenAfterAdding := len(gmsAfter)
 
 	assert.NotEqual(t, lenBeforeAdding, lenAfterAdding)
-	checkValue, ok := ms.Gauge[name]
+
+	checkValue, ok, err := ms.GetCounterMetric(name) // ms.Counter[name]
+	assert.Nil(t, err)
 	if ok {
 		assert.Equal(t, value, checkValue)
 	}

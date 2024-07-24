@@ -23,8 +23,8 @@ type AllMetrics struct {
 // MemStorage - это имплементация интерфейса Storage
 type MemStorage struct {
 	sync.RWMutex
-	Gauge   map[string]float64 // имя метрики: ее значение
-	Counter map[string]int64
+	gauge   map[string]float64 // имя метрики: ее значение
+	counter map[string]int64
 	// если config.StoreInterval равен 0, то мы назначаем MemStorage FileName,
 	// чтобы он мог синхронно писать изменения
 	FileName string
@@ -36,11 +36,11 @@ func (ms *MemStorage) Reset() {
 	ms.Lock()
 	defer ms.Unlock()
 
-	for k := range ms.Gauge {
-		delete(ms.Gauge, k)
+	for k := range ms.gauge {
+		delete(ms.gauge, k)
 	}
-	for k := range ms.Counter {
-		delete(ms.Counter, k)
+	for k := range ms.counter {
+		delete(ms.counter, k)
 	}
 
 	if ms.FileName != "" {
@@ -65,7 +65,7 @@ func New(shouldRestore bool, storagePath string) (*MemStorage, error) {
 	gauge := make(map[string]float64)
 	counter := make(map[string]int64)
 
-	ms := &MemStorage{Gauge: gauge, Counter: counter, FileName: storagePath}
+	ms := &MemStorage{gauge: gauge, counter: counter, FileName: storagePath}
 
 	// if storeInterval > 0 {
 	// 	go StartSaveLoop(time.Second*time.Duration(storeInterval), storagePath, ms)
@@ -82,7 +82,7 @@ func (ms *MemStorage) GetGaugeMetric(name string) (float64, bool, error) {
 	ms.RLock()
 	defer ms.RUnlock()
 
-	value, ok := ms.Gauge[name]
+	value, ok := ms.gauge[name]
 
 	return value, ok, nil
 }
@@ -91,7 +91,7 @@ func (ms *MemStorage) GetCounterMetric(name string) (int64, bool, error) {
 	ms.RLock()
 	defer ms.RUnlock()
 
-	value, ok := ms.Counter[name]
+	value, ok := ms.counter[name]
 
 	return value, ok, nil
 }
@@ -100,7 +100,7 @@ func (ms *MemStorage) AddGaugeMetric(name string, value float64) error {
 	ms.Lock()
 	defer ms.Unlock()
 
-	ms.Gauge[name] = value
+	ms.gauge[name] = value
 
 	if ms.FileName != "" {
 		err := WriteMetricsSnapshot(ms.FileName, ms)
@@ -115,10 +115,10 @@ func (ms *MemStorage) AddCounterMetric(name string, value int64) error {
 	ms.Lock()
 	defer ms.Unlock()
 
-	if _, exists := ms.Counter[name]; !exists {
-		ms.Counter[name] = value
+	if _, exists := ms.counter[name]; !exists {
+		ms.counter[name] = value
 	} else {
-		ms.Counter[name] += value
+		ms.counter[name] += value
 	}
 
 	if ms.FileName != "" {
@@ -131,11 +131,11 @@ func (ms *MemStorage) AddCounterMetric(name string, value int64) error {
 }
 
 func (ms *MemStorage) GetAllCounterMetrics() (map[string]int64, error) {
-	return ms.Counter, nil
+	return ms.counter, nil
 }
 
 func (ms *MemStorage) GetAllGaugeMetrics() (map[string]float64, error) {
-	return ms.Gauge, nil
+	return ms.gauge, nil
 }
 
 // функция из структуры memStorage делает структуру AllMetrics
@@ -143,10 +143,10 @@ func (ms *MemStorage) GetAllGaugeMetrics() (map[string]float64, error) {
 func MemStorageToAllMetrics(ms *MemStorage) AllMetrics {
 	var am AllMetrics
 
-	for k, v := range ms.Gauge {
+	for k, v := range ms.gauge {
 		am.AllMetrics = append(am.AllMetrics, Metric{ID: k, MType: "gauge", Value: &v})
 	}
-	for k, v := range ms.Counter {
+	for k, v := range ms.counter {
 		am.AllMetrics = append(am.AllMetrics, Metric{ID: k, MType: "counter", Delta: &v})
 	}
 
