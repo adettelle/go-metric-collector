@@ -53,75 +53,96 @@ func (dbstorage *DBStorage) GetCounterMetric(name string) (int64, bool, error) {
 func (dbstorage *DBStorage) AddGaugeMetric(name string, value float64) error {
 	log.Println("Writing to DB")
 
-	tx, err := dbstorage.DB.Begin()
-	if err != nil {
-		return err
-	}
+	// tx, err := dbstorage.DB.Begin()
+	// if err != nil {
+	// 	return err
+	// }
 
-	_, ok, err := dbstorage.GetGaugeMetric(name)
+	// _, ok, err := dbstorage.GetGaugeMetric(name)
+	// if err != nil {
+	// 	return err
+	// }
+	// if !ok {
+	// 	sqlStatement := "insert into metric (metric_type, metric_id, value)" +
+	// 		"values ('gauge', $1, $2)"
+	// 	_, err := dbstorage.DB.ExecContext(dbstorage.Ctx, sqlStatement, name, value)
+	// 	if err != nil {
+	// 		log.Println("Error:", err)
+	// 		tx.Rollback()
+	// 		return err
+	// 	}
+	// } else {
+	// 	sqlStatement := "update metric set value = $1 where metric_type = 'gauge' and metric_id = $2"
+	// 	_, err := dbstorage.DB.ExecContext(dbstorage.Ctx, sqlStatement, value, name)
+	// 	if err != nil {
+	// 		log.Println("Error:", err)
+	// 		tx.Rollback()
+	// 		return err
+	// 	}
+	// }
+
+	sqlStatement := "insert into metric (metric_type, metric_id, value)" +
+		"values ('gauge', $1, $2)" +
+		"on conflict (metric_id) do update set value = $2;"
+
+	_, err := dbstorage.DB.ExecContext(dbstorage.Ctx, sqlStatement, name, value)
 	if err != nil {
+		log.Println("error in updating gauge metric:", err)
 		return err
-	}
-	if !ok {
-		sqlStatement := "insert into metric (metric_type, metric_id, value)" +
-			"values ('gauge', $1, $2)"
-		_, err := dbstorage.DB.ExecContext(dbstorage.Ctx, sqlStatement, name, value)
-		if err != nil {
-			log.Println("Error:", err)
-			tx.Rollback()
-			return err
-		}
-	} else {
-		sqlStatement := "update metric set value = $1 where metric_type = 'gauge' and metric_id = $2"
-		_, err := dbstorage.DB.ExecContext(dbstorage.Ctx, sqlStatement, value, name)
-		if err != nil {
-			log.Println("Error:", err)
-			tx.Rollback()
-			return err
-		}
 	}
 
 	log.Println("Saved")
-	return tx.Commit()
+	return nil // tx.Commit()
 }
 
 func (dbstorage *DBStorage) AddCounterMetric(name string, delta int64) error {
 	log.Println("In AddCounterMetric")
 	// начинаем транзакцию
-	tx, err := dbstorage.DB.Begin()
-	if err != nil {
-		return err
-	}
+	// tx, err := dbstorage.DB.Begin()
+	// if err != nil {
+	// 	return err
+	// }
 
-	oldDelta, ok, err := dbstorage.GetCounterMetric(name)
-	if err != nil {
-		log.Println("Err get:", err)
-		return err
-	}
+	// oldDelta, ok, err := dbstorage.GetCounterMetric(name)
+	// if err != nil {
+	// 	log.Println("Err get:", err)
+	// 	return err
+	// }
 
-	if !ok {
-		sqlStatement := "insert into metric (metric_type, metric_id, delta)" +
-			"values ('counter', $1, $2)"
-		_, err := dbstorage.DB.ExecContext(dbstorage.Ctx, sqlStatement, name, delta)
-		if err != nil {
-			log.Println("Err ins:", err)
-			// если ошибка, то откатываем изменения
-			tx.Rollback()
-			return err
-		}
-	} else {
-		sqlStatement := "update metric set delta = $1 where metric_type = 'counter' and metric_id = $2"
-		_, err := dbstorage.DB.ExecContext(dbstorage.Ctx, sqlStatement, oldDelta+delta, name)
-		if err != nil {
-			log.Println("Error upd:", err)
-			// если ошибка, то откатываем изменения
-			tx.Rollback()
-			return err
-		}
+	// if !ok {
+	// 	sqlStatement := "insert into metric (metric_type, metric_id, delta)" +
+	// 		"values ('counter', $1, $2)"
+	// 	_, err := dbstorage.DB.ExecContext(dbstorage.Ctx, sqlStatement, name, delta)
+	// 	if err != nil {
+	// 		log.Println("Err ins:", err)
+	// 		// если ошибка, то откатываем изменения
+	// 		tx.Rollback()
+	// 		return err
+	// 	}
+	// } else {
+	// 	sqlStatement := "update metric set delta = $1 where metric_type = 'counter' and metric_id = $2"
+	// 	_, err := dbstorage.DB.ExecContext(dbstorage.Ctx, sqlStatement, oldDelta+delta, name)
+	// 	if err != nil {
+	// 		log.Println("Error upd:", err)
+	// 		// если ошибка, то откатываем изменения
+	// 		tx.Rollback()
+	// 		return err
+	// 	}
+	// }
+
+	sqlStatement := "insert into metric (metric_type, metric_id, delta)" +
+		"values ('counter', $1, $2)" +
+		"on conflict (metric_id) do update set" +
+		"delta = (select delta from metric where metric_id = $1) + $2;"
+
+	_, err := dbstorage.DB.ExecContext(dbstorage.Ctx, sqlStatement, name, delta)
+	if err != nil {
+		log.Println("error in updating counter metric:", err)
+		return err
 	}
 
 	// завершаем транзакцию
-	return tx.Commit()
+	return nil //tx.Commit()
 }
 
 func (dbstorage *DBStorage) GetAllCounterMetrics() (map[string]int64, error) {
