@@ -12,10 +12,10 @@ type DBStorage struct {
 	DB  *sql.DB
 }
 
-func (dbstorage *DBStorage) GetGaugeMetric(name string) (float64, bool, error) {
+func (s *DBStorage) GetGaugeMetric(name string) (float64, bool, error) {
 
 	sqlStatement := "SELECT value FROM metric WHERE metric_type = 'gauge' and metric_id = $1"
-	row := dbstorage.DB.QueryRowContext(dbstorage.Ctx, sqlStatement, name)
+	row := s.DB.QueryRowContext(s.Ctx, sqlStatement, name)
 
 	// переменная для чтения результата
 	var val float64
@@ -31,10 +31,10 @@ func (dbstorage *DBStorage) GetGaugeMetric(name string) (float64, bool, error) {
 	return val, true, err
 }
 
-func (dbstorage *DBStorage) GetCounterMetric(name string) (int64, bool, error) {
+func (s *DBStorage) GetCounterMetric(name string) (int64, bool, error) {
 
 	sqlStatement := "SELECT delta FROM metric WHERE metric_type = 'counter' and metric_id = $1"
-	row := dbstorage.DB.QueryRowContext(dbstorage.Ctx, sqlStatement, name)
+	row := s.DB.QueryRowContext(s.Ctx, sqlStatement, name)
 
 	// переменная для чтения результата
 	var val int64
@@ -50,13 +50,13 @@ func (dbstorage *DBStorage) GetCounterMetric(name string) (int64, bool, error) {
 	return val, true, err
 }
 
-func (dbstorage *DBStorage) AddGaugeMetric(name string, value float64) error {
+func (s *DBStorage) AddGaugeMetric(name string, value float64) error {
 	log.Println("Writing to DB")
 
 	sqlStatement := `insert into metric (metric_type, metric_id, value) 
 		values ('gauge', $1, $2) on conflict (metric_id, metric_type) do update set value = $2`
 
-	_, err := dbstorage.DB.ExecContext(dbstorage.Ctx, sqlStatement, name, value)
+	_, err := s.DB.ExecContext(s.Ctx, sqlStatement, name, value)
 	if err != nil {
 		log.Println("error in updating gauge metric:", err)
 		return err
@@ -66,7 +66,7 @@ func (dbstorage *DBStorage) AddGaugeMetric(name string, value float64) error {
 	return nil
 }
 
-func (dbstorage *DBStorage) AddCounterMetric(name string, delta int64) error {
+func (s *DBStorage) AddCounterMetric(name string, delta int64) error {
 	log.Println("In AddCounterMetric")
 
 	sqlStatement := `insert into metric (metric_type, metric_id, delta)
@@ -74,7 +74,7 @@ func (dbstorage *DBStorage) AddCounterMetric(name string, delta int64) error {
 		on conflict (metric_id, metric_type) do update set
 		delta = (select delta from metric where metric_type = 'counter' and metric_id = $1) + $2`
 
-	_, err := dbstorage.DB.ExecContext(dbstorage.Ctx, sqlStatement, name, delta)
+	_, err := s.DB.ExecContext(s.Ctx, sqlStatement, name, delta)
 	if err != nil {
 		log.Println("error in updating counter metric:", err)
 		return err
@@ -83,10 +83,10 @@ func (dbstorage *DBStorage) AddCounterMetric(name string, delta int64) error {
 	return nil
 }
 
-func (dbstorage *DBStorage) GetAllCounterMetrics() (map[string]int64, error) {
+func (s *DBStorage) GetAllCounterMetrics() (map[string]int64, error) {
 	sqlStatement := "SELECT delta FROM metric WHERE metric_type = 'counter'"
 
-	rows, err := dbstorage.DB.QueryContext(dbstorage.Ctx, sqlStatement)
+	rows, err := s.DB.QueryContext(s.Ctx, sqlStatement)
 	if err != nil {
 		return nil, err
 	}
@@ -111,10 +111,10 @@ func (dbstorage *DBStorage) GetAllCounterMetrics() (map[string]int64, error) {
 	return res, nil
 }
 
-func (dbstorage *DBStorage) GetAllGaugeMetrics() (map[string]float64, error) {
+func (s *DBStorage) GetAllGaugeMetrics() (map[string]float64, error) {
 	sqlStatement := "SELECT value FROM metric WHERE metric_type = 'gauge'"
 
-	rows, err := dbstorage.DB.QueryContext(dbstorage.Ctx, sqlStatement)
+	rows, err := s.DB.QueryContext(s.Ctx, sqlStatement)
 	if err != nil {
 		return nil, err
 	}
@@ -139,6 +139,6 @@ func (dbstorage *DBStorage) GetAllGaugeMetrics() (map[string]float64, error) {
 	return res, nil
 }
 
-func (dbstorage *DBStorage) Finalize() error {
+func (s *DBStorage) Finalize() error {
 	return nil
 }
