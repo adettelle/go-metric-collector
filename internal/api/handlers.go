@@ -5,36 +5,42 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
+	"github.com/adettelle/go-metric-collector/internal/db"
 	"github.com/adettelle/go-metric-collector/internal/server/config"
 	"github.com/adettelle/go-metric-collector/internal/server/service"
 	"github.com/adettelle/go-metric-collector/internal/storage/memstorage"
 )
 
 // интерфейс для взаимодействия с хранилищем MemStorage и другими хранилищами, напрмер, fileStorage
-// type Storager interface {
-// 	GetGaugeMetric(name string) (float64, bool)
-// 	GetCounterMetric(name string) (int64, bool)
-// 	AddGaugeMetric(name string, value float64)
-// 	AddCounterMetric(name string, value int64)
-// 	GetAllGaugeMetrics() map[string]float64
-// 	GetAllCounterMetrics() map[string]int64
-// }
-
-type MetricHandlers struct { // было MetricAPI
-	Storage *memstorage.MemStorage // Storager
-	Config  *config.Config
+// интерфейс описывает абстракцию хранения
+// (возможность положить, взять, посмотреть наличие, удалить) сущности "метрика"
+type Storager interface {
+	GetGaugeMetric(name string) (float64, bool, error)
+	GetCounterMetric(name string) (int64, bool, error)
+	AddGaugeMetric(name string, value float64) error
+	AddCounterMetric(name string, value int64) error
+	GetAllGaugeMetrics() (map[string]float64, error)
+	GetAllCounterMetrics() (map[string]int64, error)
+	Finalize() error // отрабатывает завершение приложения (при штатном завершении работы)
 }
 
-func NewMetricHandlers(storage *memstorage.MemStorage, config *config.Config) *MetricHandlers { //Storager // ранее был NewMetricAPI
+type MetricHandlers struct { // было MetricAPI
+	Storager Storager // *memstorage.MemStorage // Storager
+	Config   *config.Config
+}
+
+func NewMetricHandlers(storager Storager, config *config.Config) *MetricHandlers { //был storage *memstorage.MemStorage  // ранее был NewMetricAPI
 	return &MetricHandlers{
-		Storage: storage,
-		Config:  config,
+		Storager: storager,
+		Config:   config,
 	}
 }
 
+// принимает в теле запроса метрику в формате json
 func (mh *MetricHandlers) JSONHandlerUpdate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -58,26 +64,36 @@ func (mh *MetricHandlers) JSONHandlerUpdate(w http.ResponseWriter, r *http.Reque
 
 	switch {
 	case metric.MType == "gauge":
-		mh.Storage.AddGaugeMetric(metric.ID, *metric.Value)
+		mh.Storager.AddGaugeMetric(metric.ID, *metric.Value)
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
+		// w.WriteHeader(http.StatusOK)
 
-		_, ok := mh.Storage.GetGaugeMetric(metric.ID)
+		_, ok, err := mh.Storager.GetGaugeMetric(metric.ID)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		if !ok {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
+		w.WriteHeader(http.StatusOK)
 
 	case metric.MType == "counter":
-		mh.Storage.AddCounterMetric(metric.ID, *metric.Delta)
+		mh.Storager.AddCounterMetric(metric.ID, *metric.Delta)
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
+		// w.WriteHeader(http.StatusOK)
 
-		_, ok := mh.Storage.GetCounterMetric(metric.ID)
+		_, ok, err := mh.Storager.GetCounterMetric(metric.ID)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		if !ok {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
+		w.WriteHeader(http.StatusOK)
 
 	default:
 		w.WriteHeader(http.StatusBadRequest)
@@ -124,15 +140,29 @@ func (mh *MetricHandlers) JSONHandlerValue(w http.ResponseWriter, r *http.Reques
 	}
 	switch {
 	case metric.MType == "gauge":
-		mh.Storage.GetGaugeMetric(metric.ID)
+		value, ok, err := mh.Storager.GetGaugeMetric(metric.ID)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		if !ok {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
 
-		value := mh.Storage.Gauge[metric.ID]
 		metric.Value = &value
 
 	case metric.MType == "counter":
-		mh.Storage.GetCounterMetric(metric.ID)
+		value, ok, err := mh.Storager.GetCounterMetric(metric.ID)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		if !ok {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
 
-		value := mh.Storage.Counter[metric.ID]
 		metric.Delta = &value
 
 	default:
@@ -170,7 +200,7 @@ func (mh *MetricHandlers) CreateMetric(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		mh.Storage.AddGaugeMetric(metricName, value)
+		mh.Storager.AddGaugeMetric(metricName, value)
 
 		w.WriteHeader(http.StatusOK)
 		_, err = w.Write([]byte("Created"))
@@ -185,7 +215,7 @@ func (mh *MetricHandlers) CreateMetric(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		mh.Storage.AddCounterMetric(metricName, value)
+		mh.Storager.AddCounterMetric(metricName, value)
 
 		w.WriteHeader(http.StatusOK)
 		_, err = w.Write([]byte("Created"))
@@ -212,23 +242,31 @@ func (mh *MetricHandlers) GetMetricByValue(w http.ResponseWriter, r *http.Reques
 	metricTypeToSearch := r.PathValue("metric_type")
 	switch {
 	case metricTypeToSearch == "counter":
-		metric, metricExists := mh.Storage.GetCounterMetric(metricNameToSearch)
+		metric, metricExists, err := mh.Storager.GetCounterMetric(metricNameToSearch)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		if !metricExists {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		_, err := w.Write([]byte(fmt.Sprintf("%v", metric)))
+		_, err = w.Write([]byte(fmt.Sprintf("%v", metric)))
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	case metricTypeToSearch == "gauge":
-		metric, metricExists := mh.Storage.GetGaugeMetric(metricNameToSearch)
+		metric, metricExists, err := mh.Storager.GetGaugeMetric(metricNameToSearch)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		if !metricExists {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		_, err := w.Write([]byte(fmt.Sprintf("%v", metric)))
+		_, err = w.Write([]byte(fmt.Sprintf("%v", metric)))
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -245,8 +283,108 @@ func (mh *MetricHandlers) GetMetricByValue(w http.ResponseWriter, r *http.Reques
 
 }
 
+// используем интерфейс mh.Storager (Reporter), у кого есть GetAllCounterMetrics, GetAllGaugeMetrics
 func (mh *MetricHandlers) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	service.WriteMetricsReport(mh.Storage, w)
+	err := service.WriteMetricsReport(mh.Storager, w) // было mh *MetricHandlers
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func (mh *MetricHandlers) CheckConnectionToDB(w http.ResponseWriter, r *http.Request) {
+	log.Println("Checking DB")
+	_, err := db.ConnectWithRerties(mh.Config.DBParams)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+// принимает в теле запроса множество метрик в формате: []Metrics (списка метрик) в виде json
+func (mh *MetricHandlers) MetricsHandlerUpdate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	var Metrics []memstorage.Metric
+	var buf bytes.Buffer
+
+	// читаем тело запроса
+	_, err := buf.ReadFrom(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	// десериализуем JSON в Metrric
+	if err := json.Unmarshal(buf.Bytes(), &Metrics); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	for _, metric := range Metrics {
+		switch {
+		case metric.MType == "gauge":
+			err := mh.Storager.AddGaugeMetric(metric.ID, *metric.Value)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+
+			_, ok, err := mh.Storager.GetGaugeMetric(metric.ID)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			if !ok {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+
+		case metric.MType == "counter":
+			err := mh.Storager.AddCounterMetric(metric.ID, *metric.Delta)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+
+			_, ok, err := mh.Storager.GetCounterMetric(metric.ID)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			if !ok {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+
+		default:
+			w.WriteHeader(http.StatusBadRequest)
+			_, err := w.Write([]byte("No such metric"))
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			return
+		}
+	}
+	// resp, err := json.Marshal(Metrics)
+	// if err != nil {
+	// 	w.WriteHeader(http.StatusInternalServerError)
+	// 	return
+	// }
+
+	resp := []byte("{\"result\": \"ok\"}")
+	_, err = w.Write(resp)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
 }

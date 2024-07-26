@@ -9,10 +9,13 @@ import (
 	"strconv"
 )
 
+const defaultMaxRequestRetries = 3
+
 type Config struct {
-	Address        string
-	ReportInterval int // по умолчанию 10 сек
-	PollInterval   int // по умолчанию 2 сек
+	Address           string
+	ReportInterval    int // по умолчанию 10 сек
+	PollInterval      int // по умолчанию 2 сек
+	MaxRequestRetries int // максимальное количесвто попыток запроса
 }
 
 func New() (*Config, error) {
@@ -44,7 +47,12 @@ func New() (*Config, error) {
 		reportInterval = parseIntOrPanic(envPollInterval)
 	}
 
-	return &Config{Address: addr, ReportInterval: reportInterval, PollInterval: pollDelay}, nil
+	return &Config{
+		Address:           addr,
+		ReportInterval:    reportInterval,
+		PollInterval:      pollDelay,
+		MaxRequestRetries: defaultMaxRequestRetries,
+	}, nil
 }
 
 func parseIntOrPanic(s string) int {

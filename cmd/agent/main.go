@@ -4,6 +4,7 @@ package main
 
 import (
 	"log"
+	"net/http"
 	"sync"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 )
 
 func main() {
+
 	metricsStorage, err := memstorage.New(false, "")
 	if err != nil {
 		log.Fatal(err)
@@ -24,7 +26,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	mservice := metricservice.NewMetricCollector(config, metricsStorage)
+	client := &http.Client{
+		Timeout: time.Second * 2, // интервал ожидания: 2 секунды
+	}
+	mservice := metricservice.NewMetricService(config, metricsStorage, client)
 
 	var wg sync.WaitGroup
 	wg.Add(2)

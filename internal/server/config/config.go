@@ -15,6 +15,7 @@ type Config struct {
 	StoreInterval int    // по умолчанию 300 сек
 	StoragePath   string // по умолчанию /tmp/metrics-db.json
 	Restore       bool   // по умолчанию true
+	DBParams      string
 }
 
 func New() (*Config, error) {
@@ -22,6 +23,8 @@ func New() (*Config, error) {
 	flagStoreInterval := flag.Int("i", 300, "store metrics to file interval, seconds")
 	flagStoragePath := flag.String("f", "/tmp/metrics-db.json", "file storage path")
 	flagRestore := flag.Bool("r", true, "restore or not data from file storage path")
+	flagDBParams := flag.String("d", "", "db connection params")
+	// "host=host port=port user=myuser password=xxxx dbname=mydb sslmode=disable"
 	flag.Parse()
 
 	return &Config{
@@ -29,6 +32,7 @@ func New() (*Config, error) {
 		StoreInterval: getStoreInterval(flagStoreInterval),
 		StoragePath:   getStoragePath(flagStoragePath),
 		Restore:       getRestore(flagRestore),
+		DBParams:      getDBParams(flagDBParams),
 	}, nil
 }
 
@@ -57,9 +61,9 @@ func getStoreInterval(flagStoreInterval *int) int {
 }
 
 func getStoragePath(flagStoragePath *string) string {
-	fmt.Println("flagStoragePath:", *flagStoragePath)
+	log.Println("flagStoragePath:", *flagStoragePath)
 	storagePath, ok := os.LookupEnv("FILE_STORAGE_PATH")
-	fmt.Println("StoragePathEnv:", storagePath)
+	log.Println("StoragePathEnv:", storagePath)
 	if !ok {
 		storagePath = *flagStoragePath
 	}
@@ -124,4 +128,13 @@ func (config *Config) ShouldRestore() bool {
 	// в этом месте мы знаем, что файл существует, и что Restore = true,
 	// значит надо убедится в размере файла
 	return fileStoragePath.Size() > 0
+}
+
+func getDBParams(flagDBParams *string) string {
+	envDBParams := os.Getenv("DATABASE_DSN")
+
+	if envDBParams != "" {
+		return envDBParams
+	}
+	return *flagDBParams
 }

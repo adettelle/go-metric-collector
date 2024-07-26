@@ -77,6 +77,8 @@ func ReadMetricsSnapshot(fileName string) (*MemStorage, error) {
 }
 
 func StartSaveLoop(storeInterval time.Duration, storagePath string, ms *MemStorage) {
+	log.Println("storagePath in StartSaveLoop:", storagePath)
+	log.Println("ms.FileName in StartSaveLoop:", ms.FileName)
 	ticker := time.NewTicker(storeInterval)
 
 	for range ticker.C {

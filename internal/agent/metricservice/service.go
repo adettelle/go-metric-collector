@@ -4,6 +4,7 @@ package metricservice
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -17,21 +18,24 @@ import (
 )
 
 // Структура MetricCollector получает и рассылает метрики, запускает свои циклы (Loop)
-type MetricCollector struct {
-	config *config.Config
+type MetricService struct { // MetricCollector
+	// config *config.Config // был нужен только для генерации url
 	// store         StorageInterfase
-	metricStorage *mstore.MemStorage
+	metricStorage     *mstore.MemStorage
+	client            *http.Client
+	url               string
+	maxRequestRetries int
 }
 
-// type StorageInterfase interface {
-// }
+func NewMetricService(config *config.Config, metricStorage *mstore.MemStorage, client *http.Client) *MetricService { // store StorageInterfase,
 
-func NewMetricCollector(config *config.Config, metricStorage *mstore.MemStorage) *MetricCollector { // store StorageInterfase,
-
-	return &MetricCollector{
-		config: config,
+	return &MetricService{
+		// config: config,
 		// store:         store,
-		metricStorage: metricStorage,
+		metricStorage:     metricStorage,
+		client:            client,
+		url:               fmt.Sprintf("http://%s/updates/", config.Address),
+		maxRequestRetries: config.MaxRequestRetries,
 	}
 }
 
@@ -42,87 +46,165 @@ type MetricRequest struct {
 	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
 }
 
-func (ms *MetricCollector) sendMetric(metricType string, name string, value float64) error {
-	url := fmt.Sprintf("http://%s/update/", ms.config.Address)
+func (ms *MetricService) collectAllMetrics() ([]MetricRequest, error) {
 
-	m := &MetricRequest{
-		ID:    name,
-		MType: metricType,
+	var metrics []MetricRequest
+
+	gaugeMetrics, err := ms.metricStorage.GetAllGaugeMetrics()
+	if err != nil {
+		return nil, err
+	}
+	for name, value := range gaugeMetrics {
+		metric := MetricRequest{
+			MType: "gauge",
+			ID:    name,
+			Value: &value,
+		}
+		metrics = append(metrics, metric)
 	}
 
-	if metricType == "gauge" {
-		m.Value = &value
-	} else if metricType == "counter" {
-		v := int64(value)
-		m.Delta = &v
-	} else {
-		return fmt.Errorf("metricType is not OK: %s", metricType)
+	counterMetrics, err := ms.metricStorage.GetAllCounterMetrics()
+	if err != nil {
+		return nil, err
+	}
+	for name, delta := range counterMetrics {
+		metric := MetricRequest{
+			MType: "counter",
+			ID:    name,
+			Delta: &delta,
+		}
+		metrics = append(metrics, metric)
 	}
 
-	data, err := json.Marshal(m)
+	return metrics, nil
+}
+
+// type MetricsRequest []MetricRequest
+
+func (ms *MetricService) sendMultipleMetrics(metrics []MetricRequest) error {
+	// url := fmt.Sprintf("http://%s/updates/", ms.config.Address)
+
+	chunks := rangeChunks(10, metrics)
+
+	for i, chunk := range chunks {
+		log.Printf("Sending chunk %d of %d, chunk size %d\n", i+1, len(chunks), len(chunk))
+
+		data, err := json.Marshal(chunk)
+		if err != nil {
+			return err
+		}
+
+		// req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
+		// if err != nil {
+		// 	return err
+		// }
+
+		delay := 1 // попытки через 1, 3, 5 сек
+		for i := 0; i < ms.maxRequestRetries+1; i++ {
+			log.Printf("Sending %d attempt", i)
+			err = ms.doSend(bytes.NewBuffer(data))
+			if err == nil {
+				break
+			} else {
+				log.Printf("error while sending request: %v, is retriable: %v", err, isRetriableError(err))
+				if i == 3 || !isRetriableError(err) {
+					return err
+				}
+			}
+			<-time.NewTicker(time.Duration(delay) * time.Second).C
+			delay += 2
+		}
+		log.Printf("chunk %d sent successfully", i+1)
+	}
+
+	return nil
+}
+
+type UnsuccessfulStatusError struct {
+	Message string
+	Status  int
+}
+
+func (ue UnsuccessfulStatusError) Error() string {
+	return ue.Message
+}
+
+// будем считать, что стоит повторить запрос, если у нас произошла проблема с запросом (Client.Do)
+// это мб. проблема с сетью, либо если у нас пришел ответ со статусом 500,
+// то есть сервер возможно сможет обработать в следующий раз
+func isRetriableError(err error) bool {
+	var statusErr *UnsuccessfulStatusError
+	if errors.As(err, &statusErr) {
+		return statusErr.Status == http.StatusInternalServerError
+	}
+	return true
+}
+
+func (ms *MetricService) doSend(data *bytes.Buffer) error {
+	req, err := http.NewRequest(http.MethodPost, ms.url, data)
 	if err != nil {
 		return err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
-	if err != nil {
-		return err
-	}
-
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := ms.client.Do(req) // http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("response is not OK, status: %d", resp.StatusCode)
+		ue := UnsuccessfulStatusError{
+			Message: fmt.Sprintf("response is not OK, status: %d", resp.StatusCode),
+			Status:  resp.StatusCode, // статус, который пришел в ответе
+		}
+		// return fmt.Errorf("response is not OK, status: %d", resp.StatusCode)
+		return &ue
 	}
 
 	return nil
 }
 
-func (ms *MetricCollector) sendAllMetrics() error {
-	for name, value := range ms.metricStorage.Gauge {
-		err := ms.sendMetric("gauge", name, value)
-		if err != nil {
-			log.Printf("Couldn't send metric, %s", err.Error())
+func rangeChunks(chunkSize int, metrics []MetricRequest) [][]MetricRequest {
 
-		} else {
-			log.Printf("Metric sent %v: %v", name, value)
+	res := [][]MetricRequest{}
+
+	currentChunk := []MetricRequest{}
+
+	for _, v := range metrics {
+		currentChunk = append(currentChunk, v)
+		if len(currentChunk) == chunkSize {
+			res = append(res, currentChunk)
+			currentChunk = []MetricRequest{}
 		}
 	}
-
-	for name, value := range ms.metricStorage.Counter {
-		err := ms.sendMetric("counter", name, float64(value))
-		if err != nil {
-			log.Printf("Couldn't send metric, %s", err.Error())
-			return err
-		} else {
-			log.Printf("Metric sent %v: %v", name, value)
-		}
+	if len(currentChunk) > 0 {
+		res = append(res, currentChunk)
 	}
-
-	return nil
+	return res
 }
 
 // sendLoop sends all metrics to the server (MemStorage) with delay
-func (ms *MetricCollector) SendLoop(delay time.Duration, wg *sync.WaitGroup) {
+func (ms *MetricService) SendLoop(delay time.Duration, wg *sync.WaitGroup) {
 	defer wg.Done()
 	ticker := time.NewTicker(time.Second * delay)
 
 	for range ticker.C {
 		log.Println("Sending metrics")
-		err := ms.sendAllMetrics()
+		// err := ms.sendAllMetrics()
+		metrics, err := ms.collectAllMetrics() //
 		if err != nil {
 			log.Fatal(err)
+		}
+		err = ms.sendMultipleMetrics(metrics)
+		if err != nil {
+			log.Fatal(err) // паника после 3ей попытки или в случае не IsRetriableErr
 		}
 		ms.metricStorage.Reset()
 	}
 }
 
 // retrieveLoop gets all metrics from MemStorage to the server with delay
-func (ms *MetricCollector) RetrieveLoop(delay time.Duration, wg *sync.WaitGroup) {
+func (ms *MetricService) RetrieveLoop(delay time.Duration, wg *sync.WaitGroup) {
 	defer wg.Done()
 	ticker := time.NewTicker(time.Second * delay)
 
@@ -134,7 +216,7 @@ func (ms *MetricCollector) RetrieveLoop(delay time.Duration, wg *sync.WaitGroup)
 
 // retrieveAllMetrics получает все метрики из пакета runtime
 // и собирает дополнительные метрики (PollCount и RandomValue)
-func (ms *MetricCollector) retrieveAllMetrics() {
+func (ms *MetricService) retrieveAllMetrics() {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 

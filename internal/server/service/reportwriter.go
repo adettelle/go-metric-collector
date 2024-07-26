@@ -5,17 +5,16 @@ package service
 import (
 	"html/template"
 	"io"
-	"log"
-
-	"github.com/adettelle/go-metric-collector/internal/storage/memstorage"
 )
 
-// type Reporter interface {
-// 	GetAllGaugeMetrics() map[string]float64
-// 	GetAllCounterMetrics() map[string]int64
-// }
+type Reporter interface {
+	GetAllGaugeMetrics() (map[string]float64, error)
+	GetAllCounterMetrics() (map[string]int64, error)
+}
 
-func WriteMetricsReport(ms *memstorage.MemStorage, w io.Writer) {
+// функция использует любой объект, который имеет функции GetAllGaugeMetrics() и GetAllCounterMetrics()
+// то есть который удовлетворяет Reporter'у
+func WriteMetricsReport(rep Reporter, w io.Writer) error { // ms *memstorage.MemStorage
 
 	const tmpl = `
 <html>
@@ -51,13 +50,21 @@ func WriteMetricsReport(ms *memstorage.MemStorage, w io.Writer) {
 		Counter map[string]int64
 	}
 
-	m := tmlParams{
-		Gauge:   ms.GetAllGaugeMetrics(),
-		Counter: ms.GetAllCounterMetrics(),
-	}
-	err := t.Execute(w, m)
+	GaugeMetric, err := rep.GetAllGaugeMetrics()
 	if err != nil {
-		log.Println("error:", err)
-		return
+		return err
 	}
+	CounterMetric, err := rep.GetAllCounterMetrics()
+	if err != nil {
+		return err
+	}
+	m := tmlParams{
+		Gauge:   GaugeMetric,
+		Counter: CounterMetric,
+	}
+	err = t.Execute(w, m)
+	if err != nil {
+		return err
+	}
+	return nil
 }
