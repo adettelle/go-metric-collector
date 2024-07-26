@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/adettelle/go-metric-collector/internal/agent/config"
+	"github.com/adettelle/go-metric-collector/internal/security"
 	mstore "github.com/adettelle/go-metric-collector/internal/storage/memstorage"
 )
 
@@ -25,6 +26,7 @@ type MetricService struct { // MetricCollector
 	client            *http.Client
 	url               string
 	maxRequestRetries int
+	encryptionKey     string
 }
 
 func NewMetricService(config *config.Config, metricStorage *mstore.MemStorage, client *http.Client) *MetricService { // store StorageInterfase,
@@ -36,6 +38,7 @@ func NewMetricService(config *config.Config, metricStorage *mstore.MemStorage, c
 		client:            client,
 		url:               fmt.Sprintf("http://%s/updates/", config.Address),
 		maxRequestRetries: config.MaxRequestRetries,
+		encryptionKey:     config.Key,
 	}
 }
 
@@ -144,6 +147,13 @@ func (ms *MetricService) doSend(data *bytes.Buffer) error {
 	req, err := http.NewRequest(http.MethodPost, ms.url, data)
 	if err != nil {
 		return err
+	}
+
+	if ms.encryptionKey != "" {
+		// вычисляем хеш и передаем в HTTP-заголовке запроса с именем HashSHA256
+		hash := security.CreateSign(data.String(), ms.encryptionKey)
+		log.Println(data.String(), string(hash))
+		req.Header.Set("HashSHA256", string(hash))
 	}
 
 	resp, err := ms.client.Do(req) // http.DefaultClient.Do(req)
