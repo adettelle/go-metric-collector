@@ -26,6 +26,7 @@ type MetricService struct { // MetricCollector
 	client            *http.Client
 	url               string
 	maxRequestRetries int
+	encryptionKey     string
 }
 
 func NewMetricService(config *config.Config, metricStorage *mstore.MemStorage, client *http.Client) *MetricService { // store StorageInterfase,
@@ -37,6 +38,7 @@ func NewMetricService(config *config.Config, metricStorage *mstore.MemStorage, c
 		client:            client,
 		url:               fmt.Sprintf("http://%s/updates/", config.Address),
 		maxRequestRetries: config.MaxRequestRetries,
+		encryptionKey:     config.Key,
 	}
 }
 
@@ -148,12 +150,7 @@ func (ms *MetricService) doSend(data *bytes.Buffer) error {
 	}
 
 	// вычисляем хеш и передаем в HTTP-заголовке запроса с именем HashSHA256
-	hash := security.CreateSign(data.String(), key)
-	log.Println(data.String(), string(hash))
-	req.Header.Set("HashSHA256", string(hash))
-
-	// вычисляем хеш и передаем в HTTP-заголовке запроса с именем HashSHA256
-	hash := security.CreateSign(data.String(), key)
+	hash := security.CreateSign(data.String(), ms.encryptionKey)
 	log.Println(data.String(), string(hash))
 	req.Header.Set("HashSHA256", string(hash))
 
