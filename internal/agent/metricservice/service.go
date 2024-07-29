@@ -15,7 +15,9 @@ import (
 
 	"github.com/adettelle/go-metric-collector/internal/agent/config"
 	"github.com/adettelle/go-metric-collector/internal/security"
-	mstore "github.com/adettelle/go-metric-collector/internal/storage/memstorage"
+	"github.com/adettelle/go-metric-collector/pkg/retries"
+
+	m "github.com/adettelle/go-metric-collector/internal/agent/metrics"
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/mem"
 )
@@ -24,7 +26,7 @@ import (
 type MetricService struct { // MetricCollector
 	// config *config.Config // был нужен только для генерации url
 	// store         StorageInterfase
-	metricStorage     *mstore.MemStorage
+	metricAccumulator *m.MetricAccumulator // *metrics.MetricAccumulator
 	client            *http.Client
 	url               string
 	maxRequestRetries int
@@ -32,12 +34,12 @@ type MetricService struct { // MetricCollector
 	rateLimit         int
 }
 
-func NewMetricService(config *config.Config, metricStorage *mstore.MemStorage, client *http.Client) *MetricService { // store StorageInterfase,
+func NewMetricService(config *config.Config, metricAccumulator *m.MetricAccumulator, client *http.Client) *MetricService { // store StorageInterfase,
 
 	return &MetricService{
 		// config: config,
 		// store:         store,
-		metricStorage:     metricStorage,
+		metricAccumulator: metricAccumulator,
 		client:            client,
 		url:               fmt.Sprintf("http://%s/updates/", config.Address),
 		maxRequestRetries: config.MaxRequestRetries,
@@ -57,10 +59,8 @@ func (ms *MetricService) collectAllMetrics() ([]MetricRequest, error) {
 
 	var metrics []MetricRequest
 
-	gaugeMetrics, err := ms.metricStorage.GetAllGaugeMetrics()
-	if err != nil {
-		return nil, err
-	}
+	gaugeMetrics := ms.metricAccumulator.GetAllGaugeMetrics()
+
 	for name, value := range gaugeMetrics {
 		metric := MetricRequest{
 			MType: "gauge",
@@ -70,10 +70,8 @@ func (ms *MetricService) collectAllMetrics() ([]MetricRequest, error) {
 		metrics = append(metrics, metric)
 	}
 
-	counterMetrics, err := ms.metricStorage.GetAllCounterMetrics()
-	if err != nil {
-		return nil, err
-	}
+	counterMetrics := ms.metricAccumulator.GetAllCounterMetrics()
+
 	for name, delta := range counterMetrics {
 		metric := MetricRequest{
 			MType: "counter",
@@ -96,34 +94,6 @@ func (ms *MetricService) sendMultipleMetrics(metrics []MetricRequest,
 
 	for _, chunk := range chunks {
 		workerRequests <- chunk
-		// log.Printf("Sending chunk %d of %d, chunk size %d\n", i+1, len(chunks), len(chunk))
-
-		// data, err := json.Marshal(chunk)
-		// if err != nil {
-		// 	return err
-		// }
-
-		// // req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
-		// // if err != nil {
-		// // 	return err
-		// // }
-
-		// delay := 1 // попытки через 1, 3, 5 сек
-		// for i := 0; i < ms.maxRequestRetries+1; i++ {
-		// 	log.Printf("Sending %d attempt", i)
-		// 	err = ms.doSend(bytes.NewBuffer(data))
-		// 	if err == nil {
-		// 		break
-		// 	} else {
-		// 		log.Printf("error while sending request: %v, is retriable: %v", err, isRetriableError(err))
-		// 		if i == 3 || !isRetriableError(err) {
-		// 			return err
-		// 		}
-		// 	}
-		// 	<-time.NewTicker(time.Duration(delay) * time.Second).C
-		// 	delay += 2
-		// }
-		// log.Printf("chunk %d sent successfully", i+1)
 	}
 
 	return nil
@@ -204,7 +174,7 @@ func (ms *MetricService) SendLoop(delay time.Duration, wg *sync.WaitGroup) {
 	defer wg.Done()
 	ticker := time.NewTicker(time.Second * delay)
 
-	chunks := make(chan []MetricRequest, 5)
+	chunks := make(chan []MetricRequest, ms.rateLimit) // 5
 	results := make(chan bool)
 	for i := 0; i < ms.rateLimit; i++ {
 		go ms.StartWorker(i, chunks, results)
@@ -218,8 +188,7 @@ func (ms *MetricService) SendLoop(delay time.Duration, wg *sync.WaitGroup) {
 
 	for range ticker.C {
 		log.Println("Sending metrics")
-		// err := ms.sendAllMetrics()
-		metrics, err := ms.collectAllMetrics() //
+		metrics, err := ms.collectAllMetrics()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -227,7 +196,7 @@ func (ms *MetricService) SendLoop(delay time.Duration, wg *sync.WaitGroup) {
 		if err != nil {
 			log.Fatal(err) // паника после 3ей попытки или в случае не IsRetriableErr
 		}
-		ms.metricStorage.Reset()
+		ms.metricAccumulator.Reset()
 	}
 }
 
@@ -235,7 +204,7 @@ func (ms *MetricService) SendLoop(delay time.Duration, wg *sync.WaitGroup) {
 // jobs - канал задач, это входные данные для обработки
 // results - канал результатов, это результаты работы воркера
 func (ms *MetricService) StartWorker(id int, chunks <-chan []MetricRequest, results chan<- bool) {
-worker:
+	// worker:
 	for chunk := range chunks {
 		// log.Printf("Sending chunk %d of %d, chunk size %d\n", i+1, len(chunks), len(chunk))
 		log.Printf("Sending chunk on worker %d\n", id)
@@ -248,32 +217,21 @@ worker:
 			continue // прерываем итерацию, но не сам worker и не цикл
 		}
 
-		delay := 1 // попытки через 1, 3, 5 сек
-	retries:
-		for i := 0; i < ms.maxRequestRetries+1; i++ {
-			log.Printf("Sending %d attempt", i)
-			err = ms.doSend(bytes.NewBuffer(data))
-			if err == nil {
-				break retries
-			} else {
-				log.Printf("error while sending request: %v, is retriable: %v\n", err, isRetriableError(err))
-				if i == 3 || !isRetriableError(err) {
-					// return err
-					log.Printf("error %v in sending chun in worker %d\n", err, id)
-					results <- false
-					continue worker
-				}
-			}
-			<-time.NewTicker(time.Duration(delay) * time.Second).C
-			delay += 2
+		_, err = retries.RunWithRetries("Send metrics request",
+			ms.maxRequestRetries,
+			func() (*any, error) {
+				err := ms.doSend(bytes.NewBuffer(data))
+				return nil, err
+			}, isRetriableError)
+
+		if err != nil {
+			log.Printf("error %v in sending chun in worker %d\n", err, id)
+			results <- false
+			continue // worker
 		}
-		// log.Printf("chunk %d sent successfully", i+1)
+
 		log.Printf("chunk in worker %d sent successfully\n", id)
 		results <- true
-
-		// 	log.Printf("sending metrics %d chunk on worker %d\n", j, id)
-		// 	results <- j
-		// 	log.Printf("sended metrics %d chunk on worker %d successfull\n", j, id)
 	}
 }
 
@@ -305,37 +263,37 @@ func (ms *MetricService) retrieveAllMetrics() {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 
-	ms.metricStorage.AddCounterMetric("PollCount", 1)
+	ms.metricAccumulator.AddCounterMetric("PollCount", 1)
 
-	ms.metricStorage.AddGaugeMetric("RandomValue", rand.Float64())
+	ms.metricAccumulator.AddGaugeMetric("RandomValue", rand.Float64())
 
-	ms.metricStorage.AddGaugeMetric("Alloc", float64(m.Alloc))
-	ms.metricStorage.AddGaugeMetric("BuckHashSys", float64(m.BuckHashSys))
-	ms.metricStorage.AddGaugeMetric("Frees", float64(m.Frees))
-	ms.metricStorage.AddGaugeMetric("GCCPUFraction", m.GCCPUFraction)
-	ms.metricStorage.AddGaugeMetric("GCSys", float64(m.GCSys))
-	ms.metricStorage.AddGaugeMetric("HeapAlloc", float64(m.HeapAlloc))
-	ms.metricStorage.AddGaugeMetric("HeapIdle", float64(m.HeapIdle))
-	ms.metricStorage.AddGaugeMetric("HeapInuse", float64(m.HeapInuse))
-	ms.metricStorage.AddGaugeMetric("HeapObjects", float64(m.HeapObjects))
-	ms.metricStorage.AddGaugeMetric("HeapReleased", float64(m.HeapReleased))
-	ms.metricStorage.AddGaugeMetric("HeapSys", float64(m.HeapSys))
-	ms.metricStorage.AddGaugeMetric("LastGC", float64(m.LastGC))
-	ms.metricStorage.AddGaugeMetric("Lookups", float64(m.Lookups))
-	ms.metricStorage.AddGaugeMetric("MCacheInuse", float64(m.MCacheInuse))
-	ms.metricStorage.AddGaugeMetric("MCacheSys", float64(m.MCacheSys))
-	ms.metricStorage.AddGaugeMetric("MSpanInuse", float64(m.MSpanInuse))
-	ms.metricStorage.AddGaugeMetric("MSpanSys", float64(m.MSpanSys))
-	ms.metricStorage.AddGaugeMetric("Mallocs", float64(m.Mallocs))
-	ms.metricStorage.AddGaugeMetric("NextGC", float64(m.NextGC))
-	ms.metricStorage.AddGaugeMetric("NumForcedGC", float64(m.NumForcedGC))
-	ms.metricStorage.AddGaugeMetric("NumGC", float64(m.NumGC))
-	ms.metricStorage.AddGaugeMetric("OtherSys", float64(m.OtherSys))
-	ms.metricStorage.AddGaugeMetric("PauseTotalNs", float64(m.PauseTotalNs))
-	ms.metricStorage.AddGaugeMetric("StackInuse", float64(m.StackInuse))
-	ms.metricStorage.AddGaugeMetric("StackSys", float64(m.StackSys))
-	ms.metricStorage.AddGaugeMetric("Sys", float64(m.Sys))
-	ms.metricStorage.AddGaugeMetric("TotalAlloc", float64(m.TotalAlloc))
+	ms.metricAccumulator.AddGaugeMetric("Alloc", float64(m.Alloc))
+	ms.metricAccumulator.AddGaugeMetric("BuckHashSys", float64(m.BuckHashSys))
+	ms.metricAccumulator.AddGaugeMetric("Frees", float64(m.Frees))
+	ms.metricAccumulator.AddGaugeMetric("GCCPUFraction", m.GCCPUFraction)
+	ms.metricAccumulator.AddGaugeMetric("GCSys", float64(m.GCSys))
+	ms.metricAccumulator.AddGaugeMetric("HeapAlloc", float64(m.HeapAlloc))
+	ms.metricAccumulator.AddGaugeMetric("HeapIdle", float64(m.HeapIdle))
+	ms.metricAccumulator.AddGaugeMetric("HeapInuse", float64(m.HeapInuse))
+	ms.metricAccumulator.AddGaugeMetric("HeapObjects", float64(m.HeapObjects))
+	ms.metricAccumulator.AddGaugeMetric("HeapReleased", float64(m.HeapReleased))
+	ms.metricAccumulator.AddGaugeMetric("HeapSys", float64(m.HeapSys))
+	ms.metricAccumulator.AddGaugeMetric("LastGC", float64(m.LastGC))
+	ms.metricAccumulator.AddGaugeMetric("Lookups", float64(m.Lookups))
+	ms.metricAccumulator.AddGaugeMetric("MCacheInuse", float64(m.MCacheInuse))
+	ms.metricAccumulator.AddGaugeMetric("MCacheSys", float64(m.MCacheSys))
+	ms.metricAccumulator.AddGaugeMetric("MSpanInuse", float64(m.MSpanInuse))
+	ms.metricAccumulator.AddGaugeMetric("MSpanSys", float64(m.MSpanSys))
+	ms.metricAccumulator.AddGaugeMetric("Mallocs", float64(m.Mallocs))
+	ms.metricAccumulator.AddGaugeMetric("NextGC", float64(m.NextGC))
+	ms.metricAccumulator.AddGaugeMetric("NumForcedGC", float64(m.NumForcedGC))
+	ms.metricAccumulator.AddGaugeMetric("NumGC", float64(m.NumGC))
+	ms.metricAccumulator.AddGaugeMetric("OtherSys", float64(m.OtherSys))
+	ms.metricAccumulator.AddGaugeMetric("PauseTotalNs", float64(m.PauseTotalNs))
+	ms.metricAccumulator.AddGaugeMetric("StackInuse", float64(m.StackInuse))
+	ms.metricAccumulator.AddGaugeMetric("StackSys", float64(m.StackSys))
+	ms.metricAccumulator.AddGaugeMetric("Sys", float64(m.Sys))
+	ms.metricAccumulator.AddGaugeMetric("TotalAlloc", float64(m.TotalAlloc))
 }
 
 // retrieveAdditionalGaugeMetrics получает дополнительные метрики из пакета gopsutil
@@ -349,9 +307,9 @@ func (ms *MetricService) retrieveAdditionalGaugeMetrics() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	ms.metricStorage.AddGaugeMetric("TotalMemory", float64(v.Total))
-	ms.metricStorage.AddGaugeMetric("FreeMemory", float64(v.Free))
+	ms.metricAccumulator.AddGaugeMetric("TotalMemory", float64(v.Total))
+	ms.metricAccumulator.AddGaugeMetric("FreeMemory", float64(v.Free))
 	for i, CPUutilization := range CPUutilizations {
-		ms.metricStorage.AddGaugeMetric(fmt.Sprintf("CPUutilization%d", i+1), CPUutilization)
+		ms.metricAccumulator.AddGaugeMetric(fmt.Sprintf("CPUutilization%d", i+1), CPUutilization)
 	}
 }
