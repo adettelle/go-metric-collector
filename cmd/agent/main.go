@@ -32,9 +32,10 @@ func main() {
 	mservice := metricservice.NewMetricService(config, metricsStorage, client)
 
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(3)
 
 	go mservice.SendLoop(time.Duration(config.ReportInterval), &wg)
 	go mservice.RetrieveLoop(time.Duration(config.PollInterval), &wg)
+	go mservice.AdditionalRetrieveLoop(time.Duration(config.PollInterval), &wg)
 	wg.Wait()
 }

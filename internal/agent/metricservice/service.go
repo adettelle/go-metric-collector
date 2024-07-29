@@ -16,6 +16,8 @@ import (
 	"github.com/adettelle/go-metric-collector/internal/agent/config"
 	"github.com/adettelle/go-metric-collector/internal/security"
 	mstore "github.com/adettelle/go-metric-collector/internal/storage/memstorage"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/mem"
 )
 
 // Структура MetricCollector получает и рассылает метрики, запускает свои циклы (Loop)
@@ -27,6 +29,7 @@ type MetricService struct { // MetricCollector
 	url               string
 	maxRequestRetries int
 	encryptionKey     string
+	rateLimit         int
 }
 
 func NewMetricService(config *config.Config, metricStorage *mstore.MemStorage, client *http.Client) *MetricService { // store StorageInterfase,
@@ -39,6 +42,7 @@ func NewMetricService(config *config.Config, metricStorage *mstore.MemStorage, c
 		url:               fmt.Sprintf("http://%s/updates/", config.Address),
 		maxRequestRetries: config.MaxRequestRetries,
 		encryptionKey:     config.Key,
+		rateLimit:         config.RateLimit,
 	}
 }
 
@@ -84,40 +88,42 @@ func (ms *MetricService) collectAllMetrics() ([]MetricRequest, error) {
 
 // type MetricsRequest []MetricRequest
 
-func (ms *MetricService) sendMultipleMetrics(metrics []MetricRequest) error {
+func (ms *MetricService) sendMultipleMetrics(metrics []MetricRequest,
+	workerRequests chan<- []MetricRequest) error {
 	// url := fmt.Sprintf("http://%s/updates/", ms.config.Address)
 
 	chunks := rangeChunks(10, metrics)
 
-	for i, chunk := range chunks {
-		log.Printf("Sending chunk %d of %d, chunk size %d\n", i+1, len(chunks), len(chunk))
+	for _, chunk := range chunks {
+		workerRequests <- chunk
+		// log.Printf("Sending chunk %d of %d, chunk size %d\n", i+1, len(chunks), len(chunk))
 
-		data, err := json.Marshal(chunk)
-		if err != nil {
-			return err
-		}
-
-		// req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
+		// data, err := json.Marshal(chunk)
 		// if err != nil {
 		// 	return err
 		// }
 
-		delay := 1 // попытки через 1, 3, 5 сек
-		for i := 0; i < ms.maxRequestRetries+1; i++ {
-			log.Printf("Sending %d attempt", i)
-			err = ms.doSend(bytes.NewBuffer(data))
-			if err == nil {
-				break
-			} else {
-				log.Printf("error while sending request: %v, is retriable: %v", err, isRetriableError(err))
-				if i == 3 || !isRetriableError(err) {
-					return err
-				}
-			}
-			<-time.NewTicker(time.Duration(delay) * time.Second).C
-			delay += 2
-		}
-		log.Printf("chunk %d sent successfully", i+1)
+		// // req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
+		// // if err != nil {
+		// // 	return err
+		// // }
+
+		// delay := 1 // попытки через 1, 3, 5 сек
+		// for i := 0; i < ms.maxRequestRetries+1; i++ {
+		// 	log.Printf("Sending %d attempt", i)
+		// 	err = ms.doSend(bytes.NewBuffer(data))
+		// 	if err == nil {
+		// 		break
+		// 	} else {
+		// 		log.Printf("error while sending request: %v, is retriable: %v", err, isRetriableError(err))
+		// 		if i == 3 || !isRetriableError(err) {
+		// 			return err
+		// 		}
+		// 	}
+		// 	<-time.NewTicker(time.Duration(delay) * time.Second).C
+		// 	delay += 2
+		// }
+		// log.Printf("chunk %d sent successfully", i+1)
 	}
 
 	return nil
@@ -198,6 +204,18 @@ func (ms *MetricService) SendLoop(delay time.Duration, wg *sync.WaitGroup) {
 	defer wg.Done()
 	ticker := time.NewTicker(time.Second * delay)
 
+	chunks := make(chan []MetricRequest, 5)
+	results := make(chan bool)
+	for i := 0; i < ms.rateLimit; i++ {
+		go ms.StartWorker(i, chunks, results)
+	}
+
+	go func() {
+		for res := range results {
+			log.Printf("FIXME: chunk sent result %t", res)
+		}
+	}()
+
 	for range ticker.C {
 		log.Println("Sending metrics")
 		// err := ms.sendAllMetrics()
@@ -205,11 +223,57 @@ func (ms *MetricService) SendLoop(delay time.Duration, wg *sync.WaitGroup) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = ms.sendMultipleMetrics(metrics)
+		err = ms.sendMultipleMetrics(metrics, chunks)
 		if err != nil {
 			log.Fatal(err) // паника после 3ей попытки или в случае не IsRetriableErr
 		}
 		ms.metricStorage.Reset()
+	}
+}
+
+// worker это наш рабочий, который принимает два канала:
+// jobs - канал задач, это входные данные для обработки
+// results - канал результатов, это результаты работы воркера
+func (ms *MetricService) StartWorker(id int, chunks <-chan []MetricRequest, results chan<- bool) {
+worker:
+	for chunk := range chunks {
+		// log.Printf("Sending chunk %d of %d, chunk size %d\n", i+1, len(chunks), len(chunk))
+		log.Printf("Sending chunk on worker %d\n", id)
+
+		data, err := json.Marshal(chunk)
+		if err != nil {
+			// return err
+			log.Printf("error %v in sending chun in worker %d\n", err, id)
+			results <- false
+			continue // прерываем итерацию, но не сам worker и не цикл
+		}
+
+		delay := 1 // попытки через 1, 3, 5 сек
+	retries:
+		for i := 0; i < ms.maxRequestRetries+1; i++ {
+			log.Printf("Sending %d attempt", i)
+			err = ms.doSend(bytes.NewBuffer(data))
+			if err == nil {
+				break retries
+			} else {
+				log.Printf("error while sending request: %v, is retriable: %v\n", err, isRetriableError(err))
+				if i == 3 || !isRetriableError(err) {
+					// return err
+					log.Printf("error %v in sending chun in worker %d\n", err, id)
+					results <- false
+					continue worker
+				}
+			}
+			<-time.NewTicker(time.Duration(delay) * time.Second).C
+			delay += 2
+		}
+		// log.Printf("chunk %d sent successfully", i+1)
+		log.Printf("chunk in worker %d sent successfully\n", id)
+		results <- true
+
+		// 	log.Printf("sending metrics %d chunk on worker %d\n", j, id)
+		// 	results <- j
+		// 	log.Printf("sended metrics %d chunk on worker %d successfull\n", j, id)
 	}
 }
 
@@ -221,6 +285,17 @@ func (ms *MetricService) RetrieveLoop(delay time.Duration, wg *sync.WaitGroup) {
 	for range ticker.C {
 		log.Println("Retrieving metrics")
 		ms.retrieveAllMetrics()
+	}
+}
+
+// AdditionalRetrieveLoop gets aditional metrics from MemStorage to the server with delay
+func (ms *MetricService) AdditionalRetrieveLoop(delay time.Duration, wg *sync.WaitGroup) {
+	defer wg.Done()
+	ticker := time.NewTicker(time.Second * delay)
+
+	for range ticker.C {
+		log.Println("Retrieving additional metrics")
+		ms.retrieveAdditionalGaugeMetrics()
 	}
 }
 
@@ -261,4 +336,22 @@ func (ms *MetricService) retrieveAllMetrics() {
 	ms.metricStorage.AddGaugeMetric("StackSys", float64(m.StackSys))
 	ms.metricStorage.AddGaugeMetric("Sys", float64(m.Sys))
 	ms.metricStorage.AddGaugeMetric("TotalAlloc", float64(m.TotalAlloc))
+}
+
+// retrieveAdditionalGaugeMetrics получает дополнительные метрики из пакета gopsutil
+func (ms *MetricService) retrieveAdditionalGaugeMetrics() {
+	v, err := mem.VirtualMemory()
+	if err != nil {
+		log.Fatal(err)
+	}
+	cpu.Info()
+	CPUutilizations, err := cpu.Percent(0, true)
+	if err != nil {
+		log.Fatal(err)
+	}
+	ms.metricStorage.AddGaugeMetric("TotalMemory", float64(v.Total))
+	ms.metricStorage.AddGaugeMetric("FreeMemory", float64(v.Free))
+	for i, CPUutilization := range CPUutilizations {
+		ms.metricStorage.AddGaugeMetric(fmt.Sprintf("CPUutilization%d", i+1), CPUutilization)
+	}
 }

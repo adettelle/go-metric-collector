@@ -13,10 +13,13 @@ const defaultMaxRequestRetries = 3
 
 type Config struct {
 	Address           string
-	ReportInterval    int // по умолчанию 10 сек
-	PollInterval      int // по умолчанию 2 сек
-	MaxRequestRetries int // максимальное количесвто попыток запроса
-	Key               string
+	ReportInterval    int    // по умолчанию 10 сек
+	PollInterval      int    // по умолчанию 2 сек
+	MaxRequestRetries int    // максимальное количесвто попыток запроса
+	Key               string // ключ для подписи
+	// количество одновременно исходящих запросов на сервер
+	// (количество задач, которое одновременно происходит в worker pool)
+	RateLimit int
 }
 
 func New() (*Config, error) {
@@ -24,11 +27,13 @@ func New() (*Config, error) {
 	envPollInterval := os.Getenv("POLL_INTERVAL")
 	envReportInterval := os.Getenv("REPORT_INTERVAL")
 	envKey := os.Getenv("KEY")
+	envRateLimit := os.Getenv("RATE_LIMIT")
 
 	flagAddr := flag.String("a", "localhost:8080", "Net address localhost:port")
 	flagPollInterval := flag.Int("p", 2, "metrics poll interval, seconds")
 	flagReportInterval := flag.Int("r", 10, "metrics report interval, seconds")
 	flagKey := flag.String("k", "", "secret key")
+	flagRateLimit := flag.Int("l", 1, "number of simultaneous tasks")
 	flag.Parse()
 
 	if addr == "" {
@@ -56,12 +61,21 @@ func New() (*Config, error) {
 	} else {
 		key = envKey
 	}
+
+	var rateLimit int
+	if envRateLimit == "" {
+		rateLimit = *flagRateLimit
+	} else {
+		rateLimit = parseIntOrPanic(envRateLimit)
+	}
+
 	return &Config{
 		Address:           addr,
 		ReportInterval:    reportInterval,
 		PollInterval:      pollDelay,
 		MaxRequestRetries: defaultMaxRequestRetries,
 		Key:               key,
+		RateLimit:         rateLimit,
 	}, nil
 }
 
