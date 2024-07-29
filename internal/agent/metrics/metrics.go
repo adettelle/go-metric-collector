@@ -48,31 +48,31 @@ func New() *MetricAccumulator {
 }
 
 // оставляем
-func (ms *MetricAccumulator) AddGaugeMetric(name string, value float64) {
-	ms.Lock()
-	defer ms.Unlock()
+func (ma *MetricAccumulator) AddGaugeMetric(name string, value float64) {
+	ma.Lock()
+	defer ma.Unlock()
 
-	ms.gauge[name] = value
+	ma.gauge[name] = value
 }
 
 // оставляем
-func (ms *MetricAccumulator) AddCounterMetric(name string, value int64) {
-	ms.Lock()
-	defer ms.Unlock()
+func (ma *MetricAccumulator) AddCounterMetric(name string, value int64) {
+	ma.Lock()
+	defer ma.Unlock()
 
-	if _, exists := ms.counter[name]; !exists {
-		ms.counter[name] = value
+	if _, exists := ma.counter[name]; !exists {
+		ma.counter[name] = value
 	} else {
-		ms.counter[name] += value
+		ma.counter[name] += value
 	}
 }
 
 // оставляем
-func (ms *MetricAccumulator) GetAllCounterMetrics() map[string]int64 {
-	return ms.counter
+func (ma *MetricAccumulator) GetAllCounterMetrics() map[string]int64 {
+	return ma.counter
 }
 
 // оставляем
-func (ms *MetricAccumulator) GetAllGaugeMetrics() map[string]float64 {
-	return ms.gauge
+func (ma *MetricAccumulator) GetAllGaugeMetrics() map[string]float64 {
+	return ma.gauge
 }
