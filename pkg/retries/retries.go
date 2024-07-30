@@ -7,7 +7,7 @@ import (
 
 // обобщенные методы (функции) дженерики
 func RunWithRetries[T any](title string, count int, f func() (*T, error), isRetriableError func(error) bool) (*T, error) {
-	delay := 1 // попытки через 1, 3, 5 сек
+	delay := time.Duration(time.Second * 1) // 1 // попытки через 1, 3, 5 сек
 	for i := 0; i < count+1; i++ {
 		log.Printf("Executing action '%s': attempt %d\n", title, i)
 		res, err := f()
@@ -19,8 +19,8 @@ func RunWithRetries[T any](title string, count int, f func() (*T, error), isRetr
 				return nil, err
 			}
 		}
-		<-time.NewTicker(time.Duration(delay) * time.Second).C
-		delay += 2
+		<-time.NewTicker(delay).C                     // time.Duration(delay) * time.Second // delay * time.Second
+		delay += delay + time.Duration(time.Second*2) // time.Duration(time.Second * (1 + 2)) // 2
 	}
 
 	return nil, nil
