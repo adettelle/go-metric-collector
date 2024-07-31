@@ -19,60 +19,56 @@ type AllMetrics struct {
 
 // MetricAccumulator is used for storaging metrics
 type MetricAccumulator struct {
-	sync.RWMutex
-	gauge   map[string]float64 // имя метрики: ее значение
-	counter map[string]int64
+	// sync.RWMutex
+	gauge   *sync.Map // map[string]float64 // имя метрики: ее значение
+	counter *sync.Map // map[string]int64
 }
 
-// оставляем
 // Reset() обнуляет карты Gauge и Counter в структуре MemStorage
 // метод применяется после отправки всех метрик
 func (ma *MetricAccumulator) Reset() {
-	ma.Lock()
-	defer ma.Unlock()
-
-	for k := range ma.gauge {
-		delete(ma.gauge, k)
-	}
-	for k := range ma.counter {
-		delete(ma.counter, k)
-	}
+	ma.gauge.Range(func(key, value any) bool {
+		ma.gauge.Delete(key)
+		return true
+	})
+	ma.counter.Range(func(key, value any) bool {
+		ma.counter.Delete(key)
+		return true
+	})
 }
 
 func New() *MetricAccumulator {
-
-	gauge := make(map[string]float64)
-	counter := make(map[string]int64)
-
+	gauge := &sync.Map{}
+	counter := &sync.Map{}
 	return &MetricAccumulator{gauge: gauge, counter: counter}
 }
 
-// оставляем
 func (ma *MetricAccumulator) AddGaugeMetric(name string, value float64) {
-	ma.Lock()
-	defer ma.Unlock()
-
-	ma.gauge[name] = value
+	ma.gauge.Store(name, value)
 }
 
-// оставляем
 func (ma *MetricAccumulator) AddCounterMetric(name string, value int64) {
-	ma.Lock()
-	defer ma.Unlock()
-
-	if _, exists := ma.counter[name]; !exists {
-		ma.counter[name] = value
+	if v, exists := ma.counter.Load(name); !exists {
+		ma.counter.Store(name, value)
 	} else {
-		ma.counter[name] += value
+		ma.counter.Store(name, v.(int64)+value)
 	}
 }
 
-// оставляем
 func (ma *MetricAccumulator) GetAllCounterMetrics() map[string]int64 {
-	return ma.counter
+	result := make(map[string]int64)
+	ma.counter.Range(func(key, value any) bool {
+		result[key.(string)] = value.(int64)
+		return true
+	})
+	return result
 }
 
-// оставляем
 func (ma *MetricAccumulator) GetAllGaugeMetrics() map[string]float64 {
-	return ma.gauge
+	result := make(map[string]float64)
+	ma.gauge.Range(func(key, value any) bool {
+		result[key.(string)] = value.(float64)
+		return true
+	})
+	return result
 }

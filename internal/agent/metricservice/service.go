@@ -27,6 +27,7 @@ func NewMetricService(config *config.Config, metricAccumulator *m.MetricAccumula
 	return &MetricService{
 		metricAccumulator: metricAccumulator,
 		client: &Client{
+			client:            client,
 			url:               fmt.Sprintf("http://%s/updates/", config.Address),
 			maxRequestRetries: config.MaxRequestRetries,
 			encryptionKey:     config.Key,
