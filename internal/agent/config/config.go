@@ -5,62 +5,41 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"os"
 	"strconv"
+
+	"github.com/kelseyhightower/envconfig"
 )
 
-const defaultMaxRequestRetries = 3
+// const defaultMaxRequestRetries = 3
 
 type Config struct {
-	Address           string
-	ReportInterval    int // по умолчанию 10 сек
-	PollInterval      int // по умолчанию 2 сек
-	MaxRequestRetries int // максимальное количесвто попыток запроса
+	Address           string `env:"ADDRESS" flag:"a" default:"localhost:8080"`
+	PollInterval      int    `env:"POLL_INTERVAL" flag:"p" default:"2"`    // по умолчанию 2 сек
+	ReportInterval    int    `env:"REPORT_INTERVAL" flag:"r" default:"10"` // по умолчанию 10 сек
+	Key               string `env:"KEY" flag:"k"`                          // ключ для подписи
+	MaxRequestRetries int    `default:"3"`                                 // максимальное количество попыток запроса
+	// количество одновременно исходящих запросов на сервер
+	// (количество задач, которое одновременно происходит в worker pool)
+	RateLimit int `env:"RATE_LIMIT" flag:"l" default:"1"`
 }
 
 func New() (*Config, error) {
-	addr := os.Getenv("ADDRESS")
-	envPollInterval := os.Getenv("POLL_INTERVAL")
-	envReportInterval := os.Getenv("REPORT_INTERVAL")
+	var cfg Config
+	if err := envconfig.Process("", &cfg); err != nil {
+		return nil, err
+	}
 
-	flagAddr := flag.String("a", "localhost:8080", "Net address localhost:port")
-	flagPollInterval := flag.Int("p", 2, "metrics poll interval, seconds")
-	flagReportInterval := flag.Int("r", 10, "metrics report interval, seconds")
+	flag.StringVar(&cfg.Address, "a", cfg.Address, "Net address localhost:port")
+	flag.IntVar(&cfg.PollInterval, "p", cfg.PollInterval, "metrics poll interval, seconds")
+	flag.StringVar(&cfg.Key, "k", cfg.Key, "secret key")
+	flag.IntVar(&cfg.ReportInterval, "r", cfg.ReportInterval, "metrics report interval, seconds")
+	flag.IntVar(&cfg.RateLimit, "l", cfg.RateLimit, "number of simultaneous tasks")
+
 	flag.Parse()
 
-	if addr == "" {
-		addr = *flagAddr
-	}
-	ensureAddrFLagIsCorrect(addr)
+	ensureAddrFLagIsCorrect(cfg.Address) // addr
 
-	var pollDelay int
-	if envPollInterval == "" {
-		pollDelay = *flagPollInterval
-	} else {
-		pollDelay = parseIntOrPanic(envPollInterval)
-	}
-
-	var reportInterval int
-	if envReportInterval == "" {
-		reportInterval = *flagReportInterval
-	} else {
-		reportInterval = parseIntOrPanic(envPollInterval)
-	}
-
-	return &Config{
-		Address:           addr,
-		ReportInterval:    reportInterval,
-		PollInterval:      pollDelay,
-		MaxRequestRetries: defaultMaxRequestRetries,
-	}, nil
-}
-
-func parseIntOrPanic(s string) int {
-	x, err := strconv.Atoi(s)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return x
+	return &cfg, nil
 }
 
 func ensureAddrFLagIsCorrect(addr string) {

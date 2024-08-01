@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/adettelle/go-metric-collector/pkg/retries"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -43,21 +44,12 @@ func connect(dbParams string) (*sql.DB, error) {
 }
 
 func ConnectWithRerties(dbParams string) (*sql.DB, error) {
-	delay := 1 // попытки через 1, 3, 5 сек
-	for i := 0; i < 4; i++ {
-		log.Printf("Connecting to DB: attempt %d\n", i)
-		db, err := connect(dbParams)
-		if err == nil {
-			return db, nil
-		} else {
-			log.Printf("error while connecting to db: %v", err)
-			if i == 3 {
-				return nil, err
-			}
-		}
-		<-time.NewTicker(time.Duration(delay) * time.Second).C
-		delay += 2
-	}
 
-	return nil, nil
+	return retries.RunWithRetries("DB connection", 3,
+		func() (*sql.DB, error) {
+			return connect(dbParams)
+		},
+		func(err error) bool {
+			return true // все ошибки надо ретраить
+		})
 }

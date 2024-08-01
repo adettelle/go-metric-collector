@@ -9,17 +9,13 @@ import (
 	"time"
 
 	"github.com/adettelle/go-metric-collector/internal/agent/config"
-	"github.com/adettelle/go-metric-collector/internal/storage/memstorage"
-
+	"github.com/adettelle/go-metric-collector/internal/agent/metrics"
 	"github.com/adettelle/go-metric-collector/internal/agent/metricservice"
 )
 
 func main() {
 
-	metricsStorage, err := memstorage.New(false, "")
-	if err != nil {
-		log.Fatal(err)
-	}
+	metricAccumulator := metrics.New()
 
 	config, err := config.New()
 	if err != nil {
@@ -29,12 +25,13 @@ func main() {
 	client := &http.Client{
 		Timeout: time.Second * 2, // интервал ожидания: 2 секунды
 	}
-	mservice := metricservice.NewMetricService(config, metricsStorage, client)
+	mservice := metricservice.NewMetricService(config, metricAccumulator, client)
 
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(3)
 
 	go mservice.SendLoop(time.Duration(config.ReportInterval), &wg)
 	go mservice.RetrieveLoop(time.Duration(config.PollInterval), &wg)
+	go mservice.AdditionalRetrieveLoop(time.Duration(config.PollInterval), &wg)
 	wg.Wait()
 }
