@@ -30,27 +30,6 @@ type MemStorage struct {
 	FileName string
 }
 
-// Reset() обнуляет карты Gauge и Counter в структуре MemStorage
-// метод применяется после отправки всех метрик
-func (ms *MemStorage) Reset() {
-	ms.Lock()
-	defer ms.Unlock()
-
-	for k := range ms.gauge {
-		delete(ms.gauge, k)
-	}
-	for k := range ms.counter {
-		delete(ms.counter, k)
-	}
-
-	if ms.FileName != "" {
-		err := WriteMetricsSnapshot(ms.FileName, ms)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-}
-
 func New(shouldRestore bool, storagePath string) (*MemStorage, error) {
 
 	if shouldRestore {
@@ -76,6 +55,27 @@ func New(shouldRestore bool, storagePath string) (*MemStorage, error) {
 	// }
 
 	return ms, nil
+}
+
+// Reset() обнуляет карты Gauge и Counter в структуре MemStorage
+// метод применяется после отправки всех метрик
+func (ms *MemStorage) Reset() {
+	ms.Lock()
+	defer ms.Unlock()
+
+	for k := range ms.gauge {
+		delete(ms.gauge, k)
+	}
+	for k := range ms.counter {
+		delete(ms.counter, k)
+	}
+
+	if ms.FileName != "" {
+		err := WriteMetricsSnapshot(ms.FileName, ms)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 }
 
 func (ms *MemStorage) GetGaugeMetric(name string) (float64, bool, error) {
@@ -138,6 +138,14 @@ func (ms *MemStorage) GetAllGaugeMetrics() (map[string]float64, error) {
 	return ms.gauge, nil
 }
 
+// отрабатывает завершение приложения (при штатном завершении работы)
+// процесс финализации: объекты могут делать работу, пользоваться ресурсамии,
+// и при заверщении работы (без работы с БД или с файлом), надо содержимое memStorage записать на диск (в файл)
+func (ms *MemStorage) Finalize() error {
+	log.Println("ms.FileName:", ms.FileName)
+	return WriteMetricsSnapshot(ms.FileName, ms)
+}
+
 // функция из структуры memStorage делает структуру AllMetrics
 // перебираем ключи первой мэпы и перебираем ключи второй
 func MemStorageToAllMetrics(ms *MemStorage) AllMetrics {
@@ -170,12 +178,4 @@ func AllMetricsToMemStorage(am *AllMetrics) (*MemStorage, error) {
 	}
 
 	return ms, nil
-}
-
-// отрабатывает завершение приложения (при штатном завершении работы)
-// процесс финализации: объекты могут делать работу, пользоваться ресурсамии,
-// и при заверщении работы (без работы с БД или с файлом), надо содержимое memStorage записать на диск (в файл)
-func (ms *MemStorage) Finalize() error {
-	log.Println("ms.FileName:", ms.FileName)
-	return WriteMetricsSnapshot(ms.FileName, ms)
 }
