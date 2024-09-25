@@ -46,10 +46,9 @@ func ExampleMemStorage_AddGaugeMetric() {
 	}
 
 	name := "someGaugeMetric"
-	var (
-		value1 float64 = 111.222
-		value2 float64 = 100.555
-	)
+
+	value1 := 111.222
+	value2 := 100.555
 
 	// записали метрику в хранилище
 	ms.AddGaugeMetric(name, value1)
