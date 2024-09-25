@@ -58,7 +58,7 @@ func (c *Client) doSend(data *bytes.Buffer) error {
 		req.Header.Set("HashSHA256", string(hash))
 	}
 
-	resp, err := c.client.Do(req) // http.DefaultClient.Do(req)
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return err
 	}

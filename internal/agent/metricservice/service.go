@@ -112,7 +112,6 @@ func (ms *MetricService) AdditionalRetrieveLoop(delay time.Duration, wg *sync.Wa
 		log.Println("Retrieving additional metrics")
 		retrieveAdditionalGaugeMetrics(ms.metricAccumulator)
 	}
-
 }
 
 func (ms *MetricService) collectAllMetrics() ([]MetricRequest, error) {
