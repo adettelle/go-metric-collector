@@ -1,7 +1,7 @@
 package collections
 
 // обобщенные методы (функции) дженерики.
-func RangeChunks[T any](chunkSize int, collection []T) [][]T { // []MetricRequest
+func RangeChunks[T any](chunkSize int, collection []T) [][]T {
 	res := [][]T{}
 	currentChunk := []T{}
 

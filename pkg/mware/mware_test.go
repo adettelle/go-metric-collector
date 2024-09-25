@@ -120,6 +120,33 @@ func TestGzipMiddlewareCompressRequest(t *testing.T) {
 	require.JSONEq(t, successBody, string(b))
 }
 
+// Incorrect Content-Type test
+func TestGzipMiddlewareCompressBadRequest(t *testing.T) {
+	handler := http.HandlerFunc(GzipMiddleware(EchoHandler))
+
+	srv := httptest.NewServer(handler)
+	defer srv.Close()
+
+	requestBody := `{
+		"id":"Alloc", 
+		"type": "gauge", 
+		"value": 1.111111
+	}`
+
+	buf := compress([]byte(requestBody), t)
+
+	r := httptest.NewRequest("POST", srv.URL, buf)
+	r.RequestURI = ""
+	r.Header.Set("Content-Encoding", "gzip")
+	r.Header.Set("Content-Type", "application/xml")
+
+	resp, err := http.DefaultClient.Do(r) // это то, что вернулось от сервера
+	require.NoError(t, err)
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+
+	defer resp.Body.Close()
+}
+
 // запрос перед отправкой не надо заgzip'овать
 // middleware получает незаархивированные данные
 // потом он передает обычный json в хэндлер, хэндлер отвечает тем же самым json'ом
@@ -241,5 +268,3 @@ func EchoHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(b)
 	w.WriteHeader(http.StatusOK)
 }
-
-// go test ./internal/mware/...

@@ -51,8 +51,6 @@ var Config *config.Config = &config.Config{
 	Restore:       false,
 }
 
-// var mStorage = storage.NewMemStorage()
-
 func TestAddCounterMetric(t *testing.T) {
 	ms, err := memstorage.New(false, "")
 	if err != nil {
@@ -105,7 +103,7 @@ func TestAddGaugeMetric(t *testing.T) {
 
 	gms, err := ms.GetAllGaugeMetrics()
 	assert.Nil(t, err)
-	lenBeforeAdding := len(gms) // len(ms.Gauge)
+	lenBeforeAdding := len(gms)
 	// записали метрику в хранилище
 	ms.AddGaugeMetric(name, value)
 	gmsAfter, err := ms.GetAllGaugeMetrics()
@@ -243,7 +241,6 @@ func TestGetAllMetrics(t *testing.T) {
 func testGetValue(mType, mName string, mAPI *api.MetricHandlers) (string, int) {
 
 	w := httptest.NewRecorder()
-	//defer w.Result().Body.Close()
 
 	path := fmt.Sprintf("/value/%s/%s", mType, mName)
 	req := httptest.NewRequest(http.MethodGet, path, nil)

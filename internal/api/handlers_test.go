@@ -299,12 +299,6 @@ func TestGetAllMetricsHandler(t *testing.T) {
 
 	response := httptest.NewRecorder()
 
-	// err = service.WriteMetricsReport(mh.Storager, response.Body)
-	// require.NoError(t, err)
-
-	// err = service.WriteMetricsReport(m, response)
-	// require.NoError(t, err)
-
 	mh.GetAllMetrics(response, request)
 
 	contentType := response.Header().Get("Content-type")
@@ -585,13 +579,8 @@ func TestMetricUpdateCounterMetric(t *testing.T) {
 	mh.MetricUpdate(response, request)
 	resBody, err := io.ReadAll(response.Body)
 	require.NoError(t, err)
-	// // contentType := response.Header().Get("Content-Type")
 	require.Equal(t, http.StatusOK, response.Code)
-	// require.True(t, strings.Contains(contentType, "application/json"))
 	assert.JSONEq(t, reqBody, string(resBody))
-	// // assert.Equal(t, "application/json", contentType)
-	// respBody := response.Body.String()
-	// require.Equal(t, body, respBody)
 }
 
 func TestMetricUpdateIncorrectMetricFail(t *testing.T) {
@@ -606,14 +595,7 @@ func TestMetricUpdateIncorrectMetricFail(t *testing.T) {
 
 	reqURL := "/update/"
 
-	// mName := "C1"
-	// mValue := "123"
-	// value, err := strconv.ParseInt(mValue, 10, 64)
-	// require.NoError(t, err)
 	reqBody := `{"id":"C1", "type":"wrongType", "delta":123}`
-
-	// m.EXPECT().AddCounterMetric(mName, value).Return(nil)
-	// m.EXPECT().GetCounterMetric(mName).Return(value, true, nil)
 
 	request, err := http.NewRequest(http.MethodPost, reqURL, strings.NewReader(reqBody))
 	require.NoError(t, err)
@@ -623,16 +605,11 @@ func TestMetricUpdateIncorrectMetricFail(t *testing.T) {
 	mh.MetricUpdate(response, request)
 	resBody, err := io.ReadAll(response.Body)
 	require.NoError(t, err)
-	// // contentType := response.Header().Get("Content-Type")
 	require.Equal(t, http.StatusBadRequest, response.Code)
-	// require.True(t, strings.Contains(contentType, "application/json"))
 	assert.Equal(t, "No such metric", string(resBody))
-	// // assert.Equal(t, "application/json", contentType)
-	// respBody := response.Body.String()
-	// require.Equal(t, body, respBody)
 }
 
-func TestMetricUpdateCounterMetricInvalidJSONFail(t *testing.T) { // непонятно, что ожидать
+func TestMetricUpdateCounterMetricInvalidJSONFail(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -644,14 +621,7 @@ func TestMetricUpdateCounterMetricInvalidJSONFail(t *testing.T) { // непон�
 
 	reqURL := "/update/"
 
-	// mName := "C1"
-	// mValue := "123"
-	// value, err := strconv.ParseInt(mValue, 10, 64)
-	// require.NoError(t, err)
 	reqBody := `{"id":"C1", "type":"counter", "delta":111.222}`
-
-	// m.EXPECT().AddCounterMetric(mName, value).Return(nil)
-	// m.EXPECT().GetCounterMetric(mName).Return(value, false, nil)
 
 	request, err := http.NewRequest(http.MethodPost, reqURL, strings.NewReader(reqBody))
 	require.NoError(t, err)
@@ -662,7 +632,6 @@ func TestMetricUpdateCounterMetricInvalidJSONFail(t *testing.T) { // непон�
 	require.Equal(t, http.StatusBadRequest, response.Code)
 }
 
-// Какие еще сценарии на этот хэндлер?????
 func TestMetricUpdateGaugeMetric(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -772,18 +741,10 @@ func TestMetricsUpdateCounterMetric(t *testing.T) {
 			Key: "secret",
 		},
 	}
-	// var buf bytes.Buffer
 
 	reqURL := "/update/"
 
-	// mName := "C1"
-	// mValue := "123"
-	// value, err := strconv.ParseInt(mValue, 10, 64)
-	// require.NoError(t, err)
 	reqBody := `[{"id":"c1", "type":"counter", "delta":5}, {"id":"c2", "type":"counter", "delta":8}]`
-
-	// _, err := buf.Read([]byte(reqBody))
-	// require.NoError(t, err)
 
 	hash := security.CreateSign(reqBody, mh.Config.Key)
 	d1 := int64(5)
@@ -833,18 +794,10 @@ func TestMetricsUpdateGaugeMetric(t *testing.T) {
 			Key: "secret",
 		},
 	}
-	// var buf bytes.Buffer
 
 	reqURL := "/update/"
 
-	// mName := "C1"
-	// mValue := "123"
-	// value, err := strconv.ParseInt(mValue, 10, 64)
-	// require.NoError(t, err)
 	reqBody := `[{"id":"c1", "type":"gauge", "value":1.1}, {"id":"c2", "type":"gauge", "value":2.222}]`
-
-	// _, err := buf.Read([]byte(reqBody))
-	// require.NoError(t, err)
 
 	hash := security.CreateSign(reqBody, mh.Config.Key)
 	d1 := 1.1
@@ -879,57 +832,25 @@ func TestMetricsUpdateGaugeMetric(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, response.Code)
 	assert.JSONEq(t, `{"result":"ok"}`, string(resBody))
-
 }
 
 func TestMetricsUpdateCounterMetricIncorrectSignatureFail(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	//m := mocks.NewMockStorager(ctrl)
-
 	mh := &MetricHandlers{
-		//Storager: m,
 		Config: &config.Config{
 			Key: "secret",
 		},
 	}
-	// var buf bytes.Buffer
 
 	reqURL := "/update/"
 
-	// mName := "C1"
-	// mValue := "123"
-	// value, err := strconv.ParseInt(mValue, 10, 64)
-	// require.NoError(t, err)
 	reqBody := `[{"id":"c1", "type":"counter", "delta":5}, {"id":"c2", "type":"counter", "delta":8}]`
-
-	// _, err := buf.Read([]byte(reqBody))
-	// require.NoError(t, err)
 
 	incorrectKey := "wrongsecret"
 	hash := security.CreateSign(reqBody, incorrectKey)
-	// d1 := int64(5)
-	// d2 := int64(8)
 
-	// metrics := []memstorage.Metric{
-	// 	{
-	// 		ID:    "c1",
-	// 		MType: "counter",
-	// 		Delta: &d1,
-	// 	},
-	// 	{
-	// 		ID:    "c2",
-	// 		MType: "counter",
-	// 		Delta: &d2,
-	// 	},
-	// }
-
-	// for _, metric := range metrics {
-	// 	mm := metric
-	// 	m.EXPECT().AddCounterMetric(mm.ID, *mm.Delta).Return(nil)
-	// 	m.EXPECT().GetCounterMetric(mm.ID).Return(*mm.Delta, true, nil)
-	// }
 	request, err := http.NewRequest(http.MethodPost, reqURL, strings.NewReader(reqBody))
 	require.NoError(t, err)
 	request.Header.Set("HashSHA256", hash)
@@ -937,9 +858,6 @@ func TestMetricsUpdateCounterMetricIncorrectSignatureFail(t *testing.T) {
 	response := httptest.NewRecorder()
 
 	mh.MetricsUpdate(response, request)
-	//resBody, err := io.ReadAll(response.Body)
-	//require.NoError(t, err)
-	require.Equal(t, http.StatusBadRequest, response.Code)
-	//assert.JSONEq(t, `{"result":"ok"}`, string(resBody))
 
+	require.Equal(t, http.StatusBadRequest, response.Code)
 }
