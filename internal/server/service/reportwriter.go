@@ -14,7 +14,7 @@ type Reporter interface {
 
 // функция использует любой объект, который имеет функции GetAllGaugeMetrics() и GetAllCounterMetrics()
 // то есть который удовлетворяет Reporter'у
-func WriteMetricsReport(rep Reporter, w io.Writer) error { // ms *memstorage.MemStorage
+func WriteMetricsReport(rep Reporter, w io.Writer) error {
 
 	const tmpl = `
 <html>

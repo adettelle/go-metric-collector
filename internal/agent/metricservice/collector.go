@@ -11,9 +11,9 @@ import (
 	"github.com/shirou/gopsutil/v4/mem"
 )
 
-// retrieveAllMetrics получает все метрики из пакета runtime
+// RetrieveAllMetrics получает все метрики из пакета runtime
 // и собирает дополнительные метрики (PollCount и RandomValue)
-func retrieveAllMetrics(metricAccumulator *m.MetricAccumulator) {
+func RetrieveAllMetrics(metricAccumulator *m.MetricAccumulator) {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 

@@ -12,6 +12,7 @@ import (
 
 	"github.com/adettelle/go-metric-collector/internal/api"
 	database "github.com/adettelle/go-metric-collector/internal/db"
+	"github.com/adettelle/go-metric-collector/internal/migrator"
 
 	"github.com/adettelle/go-metric-collector/internal/server/config"
 	"github.com/adettelle/go-metric-collector/internal/storage/dbstorage"
@@ -19,24 +20,23 @@ import (
 )
 
 func main() {
-
-	config, err := config.New()
+	cfg, err := config.New()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Println("config:", config)
+	log.Println("config:", cfg)
 
-	storager, err := initStorager(config)
+	storager, err := initStorager(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	go func() {
-		fmt.Printf("Starting server on %s\n", config.Address)
-		mAPI := api.NewMetricHandlers(storager, config) // объект хэндлеров, ранее было handlers.NewMetricAPI(ms)
+		fmt.Printf("Starting server on %s\n", cfg.Address)
+		mAPI := api.NewMetricHandlers(storager, cfg) // объект хэндлеров, ранее было handlers.NewMetricAPI(ms)
 		router := api.NewMetricRouter(storager, mAPI)
-		err := http.ListenAndServe(config.Address, router)
+		err := http.ListenAndServe(cfg.Address, router)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -64,12 +64,13 @@ func main() {
 
 // init потому что он не только конструирует, но и запускает сопутсвующие процессы
 // в зависимости от того, какой storager мы выбрали
-func initStorager(config *config.Config) (api.Storager, error) {
-	log.Println("config in initStorager:", config)
+func initStorager(cfg *config.Config) (api.Storager, error) {
+	log.Println("config in initStorager:", cfg)
 	var storager api.Storager
 
-	if config.DBParams != "" {
-		db, err := database.ConnectWithRerties(config.DBParams)
+	if cfg.DBParams != "" {
+
+		db, err := database.NewDBConnection(cfg.DBParams).Connect()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -78,26 +79,27 @@ func initStorager(config *config.Config) (api.Storager, error) {
 			DB:  db,
 		}
 
-		err = database.CreateTable(db, context.Background())
-		if err != nil {
-			log.Fatal(err)
-		}
+		migrator.MustApplyMigrations(cfg.DBParams)
+		// err = database.CreateTable(db, context.Background())
+		// if err != nil {
+		// 	log.Fatal(err)
+		// }
 	} else {
 		var ms *memstorage.MemStorage
-		log.Println("config.StoragePath in initStorager:", config.StoragePath)
-		ms, err := memstorage.New(config.ShouldRestore(), config.StoragePath)
+		log.Println("cfg.StoragePath in initStorager:", cfg.StoragePath)
+		ms, err := memstorage.New(cfg.ShouldRestore(), cfg.StoragePath)
 		log.Println("ms.StoragePath in initStorager:", ms.FileName)
 		if err != nil {
 			return nil, err
 		}
 
-		if config.StoreInterval > 0 {
-			go memstorage.StartSaveLoop(time.Second*time.Duration(config.StoreInterval),
-				config.StoragePath, ms)
-		} else if config.StoreInterval == 0 {
+		if cfg.StoreInterval > 0 {
+			go memstorage.StartSaveLoop(time.Second*time.Duration(cfg.StoreInterval),
+				cfg.StoragePath, ms)
+		} else if cfg.StoreInterval == 0 {
 			// если config.StoreInterval равен 0, то мы назначаем MemStorage FileName, чтобы
 			// он мог синхронно писать изменения
-			ms.FileName = config.StoragePath
+			ms.FileName = cfg.StoragePath
 		}
 
 		storager = ms

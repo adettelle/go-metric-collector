@@ -30,15 +30,17 @@ type Storager interface {
 	Finalize() error // отрабатывает завершение приложения (при штатном завершении работы)
 }
 
-type MetricHandlers struct { // было MetricAPI
-	Storager Storager // *memstorage.MemStorage // Storager
+type MetricHandlers struct {
+	Storager Storager
 	Config   *config.Config
+	DBCon    db.DBConnector // new
 }
 
-func NewMetricHandlers(storager Storager, config *config.Config) *MetricHandlers { //был storage *memstorage.MemStorage  // ранее был NewMetricAPI
+func NewMetricHandlers(storager Storager, config *config.Config) *MetricHandlers {
 	return &MetricHandlers{
 		Storager: storager,
 		Config:   config,
+		DBCon:    db.NewDBConnection(config.DBParams),
 	}
 }
 
@@ -59,18 +61,6 @@ func (mh *MetricHandlers) JSONHandlerUpdate(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// log.Println("!!!mh.Config.Key:", mh.Config.Key)
-	// if mh.Config.Key != "" {
-	// 	// вычисляем хеш и сравниваем в HTTP-заголовке запроса с именем HashSHA256
-	// 	hash := security.CreateSign(buf.String(), mh.Config.Key)
-	// 	if !hmac.Equal([]byte(hash), []byte(r.Header.Get("HashSHA256"))) { //  sign != r.Header.Get("HashSHA256") {
-	// 		log.Println("The signature is incorrect")
-	// 		w.WriteHeader(http.StatusBadRequest)
-	// 		return
-	// 	}
-	// 	log.Println("The signature is authentic")
-	// }
-
 	// десериализуем JSON в Metrric
 	if err := json.Unmarshal(buf.Bytes(), &metric); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -79,7 +69,11 @@ func (mh *MetricHandlers) JSONHandlerUpdate(w http.ResponseWriter, r *http.Reque
 
 	switch {
 	case metric.MType == "gauge":
-		mh.Storager.AddGaugeMetric(metric.ID, *metric.Value)
+		err := mh.Storager.AddGaugeMetric(metric.ID, *metric.Value)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 		// w.WriteHeader(http.StatusOK)
 
@@ -95,9 +89,12 @@ func (mh *MetricHandlers) JSONHandlerUpdate(w http.ResponseWriter, r *http.Reque
 		w.WriteHeader(http.StatusOK)
 
 	case metric.MType == "counter":
-		mh.Storager.AddCounterMetric(metric.ID, *metric.Delta)
+		err = mh.Storager.AddCounterMetric(metric.ID, *metric.Delta)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
-		// w.WriteHeader(http.StatusOK)
 
 		_, ok, err := mh.Storager.GetCounterMetric(metric.ID)
 		if err != nil {
@@ -215,7 +212,11 @@ func (mh *MetricHandlers) CreateMetric(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		mh.Storager.AddGaugeMetric(metricName, value)
+		err = mh.Storager.AddGaugeMetric(metricName, value)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
 		w.WriteHeader(http.StatusOK)
 		_, err = w.Write([]byte("Created"))
@@ -230,7 +231,11 @@ func (mh *MetricHandlers) CreateMetric(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		mh.Storager.AddCounterMetric(metricName, value)
+		err = mh.Storager.AddCounterMetric(metricName, value)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
 		w.WriteHeader(http.StatusOK)
 		_, err = w.Write([]byte("Created"))
@@ -311,7 +316,7 @@ func (mh *MetricHandlers) GetAllMetrics(w http.ResponseWriter, r *http.Request) 
 
 func (mh *MetricHandlers) CheckConnectionToDB(w http.ResponseWriter, r *http.Request) {
 	log.Println("Checking DB")
-	_, err := db.ConnectWithRerties(mh.Config.DBParams)
+	_, err := mh.DBCon.Connect() // db.ConnectWithRerties(mh.Config.DBParams)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -402,11 +407,6 @@ func (mh *MetricHandlers) MetricsHandlerUpdate(w http.ResponseWriter, r *http.Re
 			return
 		}
 	}
-	// resp, err := json.Marshal(Metrics)
-	// if err != nil {
-	// 	w.WriteHeader(http.StatusInternalServerError)
-	// 	return
-	// }
 
 	resp := []byte("{\"result\": \"ok\"}")
 	_, err = w.Write(resp)

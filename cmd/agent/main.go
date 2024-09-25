@@ -8,13 +8,14 @@ import (
 	"sync"
 	"time"
 
+	_ "net/http/pprof"
+
 	"github.com/adettelle/go-metric-collector/internal/agent/config"
 	"github.com/adettelle/go-metric-collector/internal/agent/metrics"
 	"github.com/adettelle/go-metric-collector/internal/agent/metricservice"
 )
 
 func main() {
-
 	metricAccumulator := metrics.New()
 
 	config, err := config.New()
@@ -33,5 +34,10 @@ func main() {
 	go mservice.SendLoop(time.Duration(config.ReportInterval), &wg)
 	go mservice.RetrieveLoop(time.Duration(config.PollInterval), &wg)
 	go mservice.AdditionalRetrieveLoop(time.Duration(config.PollInterval), &wg)
+
+	if err = http.ListenAndServe(":9000", nil); err != nil {
+		log.Fatal(err)
+	}
+
 	wg.Wait()
 }
