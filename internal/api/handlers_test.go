@@ -741,7 +741,7 @@ func TestMetricValueGaugeMetric(t *testing.T) {
 	reqURL := "/value/"
 
 	mName := "G1"
-	var value float64 = 111.333
+	value := 111.333
 
 	reqBody := `{"id":"G1", "type":"gauge"}`
 	expectedRespBody := `{"id":"G1", "type":"gauge", "value":111.333}`
