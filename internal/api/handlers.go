@@ -1,4 +1,4 @@
-// слой веб контроллер отвечает за обработку входящих http запросов
+// The web controller layer is responsible for handling incoming http requests.
 package api
 
 import (
@@ -17,9 +17,9 @@ import (
 	"github.com/adettelle/go-metric-collector/internal/storage/memstorage"
 )
 
-// интерфейс для взаимодействия с хранилищем MemStorage и другими хранилищами, напрмер, fileStorage
-// интерфейс описывает абстракцию хранения
-// (возможность положить, взять, посмотреть наличие, удалить) сущности "метрика"
+// Storager defines an interface for interacting with various storage mechanisms,
+// such as MemStorage or fileStorage. It describes operations to store, retrieve,
+// check for existence, and delete a "metric" entity.
 type Storager interface {
 	GetGaugeMetric(name string) (float64, bool, error)
 	GetCounterMetric(name string) (int64, bool, error)
@@ -30,6 +30,8 @@ type Storager interface {
 	Finalize() error // отрабатывает завершение приложения (при штатном завершении работы)
 }
 
+// MetricHandlers contains dependencies for handling HTTP requests related
+// to metrics, including a storage mechanism and configuration.
 type MetricHandlers struct {
 	Storager Storager
 	Config   *config.Config
@@ -44,8 +46,9 @@ func NewMetricHandlers(storager Storager, config *config.Config) *MetricHandlers
 	}
 }
 
-// принимает в теле запроса метрику в формате json
-func (mh *MetricHandlers) JSONHandlerUpdate(w http.ResponseWriter, r *http.Request) {
+// MetricUpdate handles HTTP requests to update a metric,
+// accepting a JSON object in the request body.
+func (mh *MetricHandlers) MetricUpdate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -54,14 +57,14 @@ func (mh *MetricHandlers) JSONHandlerUpdate(w http.ResponseWriter, r *http.Reque
 	var metric memstorage.Metric
 	var buf bytes.Buffer
 
-	// читаем тело запроса
+	// Read the request body
 	_, err := buf.ReadFrom(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// десериализуем JSON в Metrric
+	// Deserialize JSON into Metric
 	if err := json.Unmarshal(buf.Bytes(), &metric); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -75,7 +78,6 @@ func (mh *MetricHandlers) JSONHandlerUpdate(w http.ResponseWriter, r *http.Reque
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		// w.WriteHeader(http.StatusOK)
 
 		_, ok, err := mh.Storager.GetGaugeMetric(metric.ID)
 		if err != nil {
@@ -129,8 +131,9 @@ func (mh *MetricHandlers) JSONHandlerUpdate(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-func (mh *MetricHandlers) JSONHandlerValue(w http.ResponseWriter, r *http.Request) {
-
+// MetricValue retrieves the current value of a metric provided in the
+// request body as a JSON object.
+func (mh *MetricHandlers) MetricValue(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -139,13 +142,13 @@ func (mh *MetricHandlers) JSONHandlerValue(w http.ResponseWriter, r *http.Reques
 	var metric memstorage.Metric
 	var buf bytes.Buffer
 
-	// читаем тело запроса
+	// Read the request body
 	_, err := buf.ReadFrom(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	// десериализуем JSON в Metrric
+	// Deserialize JSON into Metric
 	if err := json.Unmarshal(buf.Bytes(), &metric); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -198,7 +201,7 @@ func (mh *MetricHandlers) JSONHandlerValue(w http.ResponseWriter, r *http.Reques
 	w.Write(resp)
 }
 
-// CreateMetric adds metric into MemStorage
+// CreateMetric adds a new metric with a specific name and value into MemStorage
 // POST http://localhost:8080/update/counter/someMetric/527
 func (mh *MetricHandlers) CreateMetric(w http.ResponseWriter, r *http.Request) {
 	metricName := r.PathValue("metric_name")
@@ -255,7 +258,8 @@ func (mh *MetricHandlers) CreateMetric(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GetMetric gets metric from MemStorage
+// GetMetric retrieves the value of a metric with the specified type
+// and name from MemStorage
 // GET http://localhost:8080/value/counter/HeapAlloc
 func (mh *MetricHandlers) GetMetricByValue(w http.ResponseWriter, r *http.Request) {
 	metricNameToSearch := r.PathValue("metric_name")
@@ -324,8 +328,9 @@ func (mh *MetricHandlers) CheckConnectionToDB(w http.ResponseWriter, r *http.Req
 	w.WriteHeader(http.StatusOK)
 }
 
-// принимает в теле запроса множество метрик в формате: []Metrics (списка метрик) в виде json
-func (mh *MetricHandlers) MetricsHandlerUpdate(w http.ResponseWriter, r *http.Request) {
+// MetricsUpdate processes an HTTP POST request that contains a batch of
+// metrics ([]Metrics) in JSON format.
+func (mh *MetricHandlers) MetricsUpdate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -345,7 +350,7 @@ func (mh *MetricHandlers) MetricsHandlerUpdate(w http.ResponseWriter, r *http.Re
 	if mh.Config.Key != "" {
 		// вычисляем хеш и сравниваем в HTTP-заголовке запроса с именем HashSHA256
 		hash := security.CreateSign(buf.String(), mh.Config.Key)
-		if !hmac.Equal([]byte(hash), []byte(r.Header.Get("HashSHA256"))) { //  sign != r.Header.Get("HashSHA256") {
+		if !hmac.Equal([]byte(hash), []byte(r.Header.Get("HashSHA256"))) {
 			log.Println("The signature is incorrect")
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -355,6 +360,7 @@ func (mh *MetricHandlers) MetricsHandlerUpdate(w http.ResponseWriter, r *http.Re
 
 	// десериализуем JSON в Metrric
 	if err := json.Unmarshal(buf.Bytes(), &Metrics); err != nil {
+		log.Println("!!!!!!!!!!!", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

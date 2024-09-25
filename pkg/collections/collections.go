@@ -1,6 +1,6 @@
 package collections
 
-// обобщенные методы (функции) дженерики
+// обобщенные методы (функции) дженерики.
 func RangeChunks[T any](chunkSize int, collection []T) [][]T { // []MetricRequest
 	res := [][]T{}
 	currentChunk := []T{}

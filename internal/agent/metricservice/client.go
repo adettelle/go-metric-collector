@@ -24,7 +24,6 @@ func (c *Client) SendMetricsChunk(id int, chunk []MetricRequest) error {
 	data, err := json.Marshal(chunk)
 	if err != nil {
 		log.Printf("error %v in sending chun in worker %d\n", err, id)
-		// results <- false
 		return err // прерываем итерацию, но не сам worker и не цикл
 	}
 
@@ -37,7 +36,6 @@ func (c *Client) SendMetricsChunk(id int, chunk []MetricRequest) error {
 
 	if err != nil {
 		log.Printf("error %v in sending chun in worker %d\n", err, id)
-		// results <- false
 		return err
 	}
 

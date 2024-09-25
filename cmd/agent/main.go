@@ -1,5 +1,5 @@
-// агент (HTTP-клиент) для сбора рантайм-метрик
-// и их последующей отправки на сервер по протоколу HTTP
+// Agent (HTTP-client) is used for collecting runtime metrics
+// and their subsequent sending to the server by HTTP protocol.
 package main
 
 import (

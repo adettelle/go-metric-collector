@@ -37,7 +37,7 @@ func New() (*Config, error) {
 
 	flag.Parse()
 
-	ensureAddrFLagIsCorrect(cfg.Address) // addr
+	ensureAddrFLagIsCorrect(cfg.Address)
 
 	return &cfg, nil
 }

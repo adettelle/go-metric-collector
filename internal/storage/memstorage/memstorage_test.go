@@ -1,0 +1,109 @@
+package memstorage_test
+
+import (
+	"fmt"
+	"log"
+	"sort"
+
+	"github.com/adettelle/go-metric-collector/internal/storage/memstorage"
+)
+
+func ExampleMemStorage_AddCounterMetric() {
+	ms, err := memstorage.New(false, "")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	name := "someMetric"
+	var (
+		value1 int64 = 525
+		value2 int64 = 100
+	)
+
+	// записали метрику в хранилище
+	ms.AddCounterMetric(name, value1)
+	// проверка наличия метрики в map
+	val1, ok, err := ms.GetCounterMetric(name)
+	if ok {
+		fmt.Println(val1)
+	}
+
+	ms.AddCounterMetric(name, value2)
+	val2, ok, err := ms.GetCounterMetric(name)
+	if ok {
+		fmt.Println(val2)
+	}
+
+	// Output:
+	// 525
+	// 625
+}
+
+func ExampleMemStorage_AddGaugeMetric() {
+	ms, err := memstorage.New(false, "")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	name := "someGaugeMetric"
+	var (
+		value1 float64 = 111.222
+		value2 float64 = 100.555
+	)
+
+	// записали метрику в хранилище
+	ms.AddGaugeMetric(name, value1)
+	// проверка наличия метрики в map
+	val1, ok, err := ms.GetGaugeMetric(name)
+	if ok {
+		fmt.Println(val1)
+	}
+
+	ms.AddGaugeMetric(name, value2)
+	val2, ok, err := ms.GetGaugeMetric(name)
+	if ok {
+		fmt.Println(val2)
+	}
+
+	// Output:
+	// 111.222
+	// 100.555
+}
+
+func ExampleMemStorage_GetAllCounterMetrics() {
+	ms, err := memstorage.New(false, "")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	metrics := map[string]int64{
+		"c1": 525,
+		"c2": 100,
+	}
+
+	for k, v := range metrics {
+		ms.AddCounterMetric(k, v)
+	}
+
+	checkmetrics, err := ms.GetAllCounterMetrics()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	names := make([]string, 0, len(metrics))
+	for name := range metrics {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		if metrics[name] == checkmetrics[name] {
+			fmt.Println(metrics[name])
+		} else {
+			log.Fatal("Not equal")
+		}
+	}
+	// Output:
+	// 525
+	// 100
+}

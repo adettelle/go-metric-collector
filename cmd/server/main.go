@@ -1,4 +1,4 @@
-// сервер для сбора рантайм-метрик, который собирает репорты от агентов по протоколу HTTP
+// Server for collecting rantime metrics, collects reports from agents by HTTP protocol.
 package main
 
 import (
@@ -34,7 +34,7 @@ func main() {
 
 	go func() {
 		fmt.Printf("Starting server on %s\n", cfg.Address)
-		mAPI := api.NewMetricHandlers(storager, cfg) // объект хэндлеров, ранее было handlers.NewMetricAPI(ms)
+		mAPI := api.NewMetricHandlers(storager, cfg)
 		router := api.NewMetricRouter(storager, mAPI)
 		err := http.ListenAndServe(cfg.Address, router)
 		if err != nil {
@@ -52,7 +52,7 @@ func main() {
 		s := <-c
 		log.Printf("Got termination signal: %s. Graceful shutdown", s)
 
-		err = storager.Finalize() // memstorage.WriteMetricsSnapshot(config.StoragePath, ms)
+		err = storager.Finalize()
 		if err != nil {
 			log.Println(err)
 			log.Println("unable to write to file")
@@ -62,8 +62,8 @@ func main() {
 	<-done
 }
 
-// init потому что он не только конструирует, но и запускает сопутсвующие процессы
-// в зависимости от того, какой storager мы выбрали
+// initStorager not only constructs, but also starts related processes
+// depending on which storager we choose.
 func initStorager(cfg *config.Config) (api.Storager, error) {
 	log.Println("config in initStorager:", cfg)
 	var storager api.Storager
@@ -80,10 +80,7 @@ func initStorager(cfg *config.Config) (api.Storager, error) {
 		}
 
 		migrator.MustApplyMigrations(cfg.DBParams)
-		// err = database.CreateTable(db, context.Background())
-		// if err != nil {
-		// 	log.Fatal(err)
-		// }
+
 	} else {
 		var ms *memstorage.MemStorage
 		log.Println("cfg.StoragePath in initStorager:", cfg.StoragePath)
@@ -103,7 +100,6 @@ func initStorager(cfg *config.Config) (api.Storager, error) {
 		}
 
 		storager = ms
-
 	}
 	return storager, nil
 }
