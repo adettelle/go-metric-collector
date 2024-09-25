@@ -24,6 +24,12 @@ type MetricAccumulator struct {
 	counter *sync.Map // map[string]int64
 }
 
+func New() *MetricAccumulator {
+	gauge := &sync.Map{}
+	counter := &sync.Map{}
+	return &MetricAccumulator{gauge: gauge, counter: counter}
+}
+
 // Reset() обнуляет карты Gauge и Counter в структуре MemStorage
 // метод применяется после отправки всех метрик
 func (ma *MetricAccumulator) Reset() {
@@ -35,12 +41,6 @@ func (ma *MetricAccumulator) Reset() {
 		ma.counter.Delete(key)
 		return true
 	})
-}
-
-func New() *MetricAccumulator {
-	gauge := &sync.Map{}
-	counter := &sync.Map{}
-	return &MetricAccumulator{gauge: gauge, counter: counter}
 }
 
 func (ma *MetricAccumulator) AddGaugeMetric(name string, value float64) {

@@ -10,21 +10,21 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-func CreateTable(db *sql.DB, ctx context.Context) error { // metric_type_enum
+// func CreateTable(db *sql.DB, ctx context.Context) error { // metric_type_enum
 
-	sqlStqtement := `create table if not exists metric
-		(id serial primary key , metric_type text not null,
-		metric_id varchar(30) not null, value double precision not null default 0,
-		delta bigint not null default 0, created_at timestamp not null default now(),
-		unique(metric_id, metric_type));`
+// 	sqlStqtement := `create table if not exists metric
+// 		(id serial primary key , metric_type text not null,
+// 		metric_id varchar(30) not null, value double precision not null default 0,
+// 		delta bigint not null default 0, created_at timestamp not null default now(),
+// 		unique(metric_id, metric_type));`
 
-	_, err := db.ExecContext(ctx, sqlStqtement)
-	if err != nil {
-		return err
-	}
+// 	_, err := db.ExecContext(ctx, sqlStqtement)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 func connect(dbParams string) (*sql.DB, error) {
 	log.Println("Connecting to DB", dbParams)
@@ -43,11 +43,24 @@ func connect(dbParams string) (*sql.DB, error) {
 	return db, nil
 }
 
-func ConnectWithRerties(dbParams string) (*sql.DB, error) {
+type DBConnector interface {
+	Connect() (*sql.DB, error)
+}
 
+type DBConnection struct {
+	DBParams string
+}
+
+func NewDBConnection(params string) *DBConnection {
+	return &DBConnection{
+		DBParams: params,
+	}
+}
+
+func (dbCon *DBConnection) Connect() (*sql.DB, error) {
 	return retries.RunWithRetries("DB connection", 3,
 		func() (*sql.DB, error) {
-			return connect(dbParams)
+			return connect(dbCon.DBParams)
 		},
 		func(err error) bool {
 			return true // все ошибки надо ретраить
