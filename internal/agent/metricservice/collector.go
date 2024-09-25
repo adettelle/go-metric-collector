@@ -5,7 +5,6 @@ import (
 	"log"
 	"math/rand"
 	"runtime"
-	"time"
 
 	m "github.com/adettelle/go-metric-collector/internal/agent/metrics"
 	"github.com/shirou/gopsutil/v4/cpu"
@@ -53,7 +52,6 @@ func RetrieveAllMetrics(metricAccumulator *m.MetricAccumulator) {
 
 // retrieveAdditionalGaugeMetrics получает дополнительные метрики из пакета gopsutil
 func retrieveAdditionalGaugeMetrics(metricAccumulator *m.MetricAccumulator) {
-	time.Sleep(time.Millisecond * 100)
 	v, err := mem.VirtualMemory()
 	if err != nil {
 		log.Fatal(err)
