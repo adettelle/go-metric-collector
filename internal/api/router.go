@@ -20,7 +20,6 @@ func NewMetricRouter(ms Storager, mh *MetricHandlers) *chi.Mux { // ms *memstora
 	// метод получает метрику на вход для обновления и для добавления
 	// GzipMiddleware смотрит на HTTP-заголовка Content-Encoding
 	// и разархивирует body (если gzip) либо оставляет, как есть
-
 	// принимает в теле запроса метрику в формате json
 	r.Post("/update/", mware.WithLogging(mware.GzipMiddleware(mh.JSONHandlerUpdate)))
 

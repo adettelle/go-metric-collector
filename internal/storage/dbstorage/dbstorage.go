@@ -4,6 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"log"
+
+	"github.com/adettelle/go-metric-collector/internal/api"
+)
+
+var (
+	_ api.Storager = (*DBStorage)(nil)
 )
 
 // DBStorage - это имплементация (или реализация) интерфейса Storage
