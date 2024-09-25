@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"testing"
 
 	"github.com/adettelle/go-metric-collector/internal/storage/memstorage"
+	"github.com/stretchr/testify/require"
 )
 
 func ExampleMemStorage_AddCounterMetric() {
@@ -105,4 +107,26 @@ func ExampleMemStorage_GetAllCounterMetrics() {
 	// Output:
 	// 525
 	// 100
+}
+
+func TestReset(t *testing.T) {
+	ms, err := memstorage.New(false, "")
+	require.NoError(t, err)
+
+	err = ms.AddCounterMetric("m1", 1)
+	require.NoError(t, err)
+
+	err = ms.AddGaugeMetric("g1", 1.1)
+	require.NoError(t, err)
+
+	ms.Reset()
+
+	cMetrics, err := ms.GetAllCounterMetrics()
+	require.NoError(t, err)
+	require.Empty(t, cMetrics)
+
+	gMetrics, err := ms.GetAllGaugeMetrics()
+	require.NoError(t, err)
+	require.Empty(t, gMetrics)
+
 }
