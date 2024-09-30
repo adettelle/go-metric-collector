@@ -572,6 +572,7 @@ func TestMetricUpdateCounterMetric(t *testing.T) {
 	m.EXPECT().GetCounterMetric(mName).Return(value, true, nil)
 
 	request, err := http.NewRequest(http.MethodPost, reqURL, strings.NewReader(reqBody))
+	// assert.Equal(t, http.MethodPost, request.Method) //
 	require.NoError(t, err)
 
 	response := httptest.NewRecorder()

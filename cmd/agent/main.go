@@ -26,7 +26,8 @@ func main() {
 	client := &http.Client{
 		Timeout: time.Second * 2, // интервал ожидания: 2 секунды
 	}
-	mservice := metricservice.NewMetricService(config, metricAccumulator, client)
+
+	mservice := metricservice.NewMetricService(config, metricAccumulator, client, 10)
 
 	var wg sync.WaitGroup
 	wg.Add(3)

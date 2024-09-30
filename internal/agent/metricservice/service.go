@@ -20,12 +20,14 @@ type MetricService struct {
 	metricAccumulator *m.MetricAccumulator
 	rateLimit         int
 	client            *Client
+	ChunkSize         int
 }
 
 func NewMetricService(
 	config *config.Config,
 	metricAccumulator *m.MetricAccumulator,
 	client *http.Client,
+	chunkSize int,
 ) *MetricService {
 	return &MetricService{
 		metricAccumulator: metricAccumulator,
@@ -36,6 +38,7 @@ func NewMetricService(
 			encryptionKey:     config.Key,
 		},
 		rateLimit: config.RateLimit,
+		ChunkSize: chunkSize,
 	}
 }
 
@@ -146,7 +149,7 @@ func (ms *MetricService) sendMultipleMetrics(metrics []MetricRequest,
 	workerRequests chan<- []MetricRequest) error {
 	// url := fmt.Sprintf("http://%s/updates/", ms.config.Address)
 
-	chunks := collections.RangeChunks(10, metrics)
+	chunks := collections.RangeChunks(ms.ChunkSize, metrics) // 10
 
 	for _, chunk := range chunks {
 		workerRequests <- chunk
