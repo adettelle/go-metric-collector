@@ -55,7 +55,7 @@ func TestAddCounterMetric(t *testing.T) {
 
 func TestAddGaugeMetric(t *testing.T) {
 	name := "G1"
-	var value float64 = 1.123
+	var value = 1.123
 
 	ma := New()
 	allMs := ma.GetAllGaugeMetrics()
@@ -74,7 +74,7 @@ func TestAddGaugeMetric(t *testing.T) {
 	assert.Equal(t, val1, value)
 
 	// проверка добавление уже сущ-ей метрики
-	var newValue float64 = 222.666
+	var newValue = 222.666
 	ma.AddGaugeMetric(name, newValue)
 	gMetrics2 := ma.GetAllGaugeMetrics()
 	val2, ok := gMetrics2[name]
@@ -83,7 +83,7 @@ func TestAddGaugeMetric(t *testing.T) {
 
 	// проверка получения несущ-ей метрики
 	unrealName := "UnrealMetric"
-	var zero float64 = 0
+	var zero = 0
 	gMetrics3 := ma.GetAllGaugeMetrics()
 	val3, ok := gMetrics3[unrealName]
 	assert.False(t, ok)

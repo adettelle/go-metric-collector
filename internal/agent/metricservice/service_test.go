@@ -47,14 +47,14 @@ func TestSendMultipleMetrics(t *testing.T) {
 	}
 
 	var (
-		v1 float64 = 1.1
-		v2 float64 = 2.2
-		v3 float64 = 3.3
+		v1 = 1.1
+		v2 = 2.2
+		v3 = 3.3
 	)
 	metrics := []MetricRequest{
-		{ID: "g1", MType: "gauge", Value: &v1}, // new(float64)
-		{ID: "g2", MType: "gauge", Value: &v2}, // new(float64)
-		{ID: "g3", MType: "gauge", Value: &v3}, // new(float64)
+		{ID: "g1", MType: "gauge", Value: &v1},
+		{ID: "g2", MType: "gauge", Value: &v2},
+		{ID: "g3", MType: "gauge", Value: &v3},
 	}
 
 	chunksChannel := make(chan []MetricRequest, len(metrics))
