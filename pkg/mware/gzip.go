@@ -1,12 +1,21 @@
+// Package mware provides middleware functionality for HTTP servers.
+// This package contains utilities such as middleware to handle compression,
+// specifically gzip, for incoming and outgoing HTTP requests.
+// This package also offers functionality such as logging HTTP request/response data,
+// including status codes, request durations, and response sizes.
+// It also includes a custom implementation of the http.ResponseWriter
+// to capture detailed information about the HTTP response.
 package mware
 
 import (
 	"net/http"
 	"strings"
 
-	"github.com/adettelle/go-metric-collector/pkg/compressor"
+	pkg "github.com/adettelle/go-metric-collector/pkg/compressor"
 )
 
+// GzipMiddleware wraps an http.HandlerFunc to add gzip compression and decompression functionality.
+// It compresses responses and decompresses requests based on the client's `Accept-Encoding` and `Content-Encoding` headers.
 func GzipMiddleware(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 

@@ -1,3 +1,6 @@
+// Package pkg provides utilities for compressing and decompressing HTTP responses and requests.
+// It includes a gzip-based compression writer and reader, which can transparently handle
+// gzip compression for HTTP clients and servers.
 package pkg
 
 import (
@@ -6,13 +9,15 @@ import (
 	"net/http"
 )
 
-// compressWriter реализует интерфейс http.ResponseWriter и позволяет прозрачно для сервера
-// сжимать передаваемые данные и выставлять правильные HTTP-заголовки
+// compressWriter implements the http.ResponseWriter interface and enables transparent
+// compression of data being sent to the client. It also sets the appropriate HTTP headers.
 type compressWriter struct {
 	w  http.ResponseWriter
 	zw *gzip.Writer
 }
 
+// NewCompressWriter creates and returns a new compressWriter that wraps the provided
+// http.ResponseWriter. It initializes the gzip.Writer for compressing the response data.
 func NewCompressWriter(w http.ResponseWriter) *compressWriter {
 	return &compressWriter{
 		w:  w,
@@ -35,18 +40,21 @@ func (c *compressWriter) WriteHeader(statuscode int) {
 	c.w.WriteHeader(statuscode)
 }
 
-// Close закрывает gzip.Writer и досылает все данные из буфера.
+// Close finalizes the gzip.Writer by closing it, ensuring that all buffered data is flushed
+// and written to the client. Close закрывает gzip.Writer и досылает все данные из буфера.
 func (c *compressWriter) Close() error {
 	return c.zw.Close()
 }
 
-// compressReader реализует интерфейс io.ReadCloser и позволяет прозрачно для сервера
-// декомпрессировать получаемые от клиента данные
+// compressReader implements the io.ReadCloser interface and allows transparent decompression
+// of data received from the client using gzip compression.
 type compressReader struct {
 	r  io.ReadCloser
 	zr *gzip.Reader
 }
 
+// NewCompressReader creates and returns a new compressReader that wraps the provided io.ReadCloser.
+// It initializes the gzip.Reader for decompressing the request data.
 func NewCompressReader(r io.ReadCloser) (*compressReader, error) {
 	zr, err := gzip.NewReader(r)
 	if err != nil {
