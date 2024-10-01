@@ -22,7 +22,7 @@ import (
 // 	require.Equal(t, res, os.Getenv("KEY"))
 // }
 
-func TestDefauktConfig(t *testing.T) {
+func TestDefaultConfig(t *testing.T) {
 	cfg, err := New()
 	require.Nil(t, err)
 

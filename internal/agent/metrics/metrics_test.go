@@ -83,11 +83,11 @@ func TestAddGaugeMetric(t *testing.T) {
 
 	// проверка получения несущ-ей метрики
 	unrealName := "UnrealMetric"
-	var zero = 0
+
 	gMetrics3 := ma.GetAllGaugeMetrics()
 	val3, ok := gMetrics3[unrealName]
 	assert.False(t, ok)
-	assert.Equal(t, val3, zero)
+	assert.Equal(t, val3, 0.0)
 }
 
 func TestReset(t *testing.T) {

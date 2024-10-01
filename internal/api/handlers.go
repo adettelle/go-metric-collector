@@ -204,6 +204,10 @@ func (mh *MetricHandlers) MetricValue(w http.ResponseWriter, r *http.Request) {
 // CreateMetric adds a new metric with a specific name and value into MemStorage
 // POST http://localhost:8080/update/counter/someMetric/527
 func (mh *MetricHandlers) CreateMetric(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
 	metricName := r.PathValue("metric_name")
 	metricValue := r.PathValue("metric_value")
 	metricType := r.PathValue("metric_type")
@@ -346,7 +350,7 @@ func (mh *MetricHandlers) MetricsUpdate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	log.Println("mh.Config.Key:", mh.Config.Key)
+	// log.Println("mh.Config.Key:", mh.Config.Key)
 	if mh.Config.Key != "" {
 		// вычисляем хеш и сравниваем в HTTP-заголовке запроса с именем HashSHA256
 		hash := security.CreateSign(buf.String(), mh.Config.Key)
