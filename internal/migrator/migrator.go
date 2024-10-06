@@ -17,24 +17,31 @@ const migrationDir = "migration"
 var MigrationsFS embed.FS
 
 func MustApplyMigrations(dbParams string) {
+	err := applyMigrations(dbParams)
+	if err != nil {
+		log.Fatalf("error applying migration: %v", err)
+	}
+}
+
+func applyMigrations(dbParams string) error {
 	srcDriver, err := iofs.New(MigrationsFS, migrationDir)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	db, err := sql.Open("pgx", dbParams)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	driver, err := postgres.WithInstance(db, &postgres.Config{})
 	if err != nil {
-		log.Fatalf("unable to create db instance: %v", err)
+		return err
 	}
 
 	migrator, err := migrate.NewWithInstance("migration_embeded_sql_files", srcDriver, "psql_db", driver)
 	if err != nil {
-		log.Fatalf("unable to create migration: %v", err)
+		return err
 	}
 
 	defer func() {
@@ -42,8 +49,9 @@ func MustApplyMigrations(dbParams string) {
 	}()
 
 	if err = migrator.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		log.Fatalf("unable to apply migrations %v", err)
+		return err
 	}
 
 	log.Printf("Migrations applied")
+	return nil
 }

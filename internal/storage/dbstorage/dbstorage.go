@@ -90,7 +90,7 @@ func (s *DBStorage) AddCounterMetric(name string, delta int64) error {
 }
 
 func (s *DBStorage) GetAllCounterMetrics() (map[string]int64, error) {
-	sqlStatement := "SELECT delta FROM metric WHERE metric_type = 'counter'"
+	sqlStatement := "SELECT metric_id, delta FROM metric WHERE metric_type = 'counter'"
 
 	rows, err := s.DB.QueryContext(s.Ctx, sqlStatement)
 	if err != nil {
@@ -118,7 +118,7 @@ func (s *DBStorage) GetAllCounterMetrics() (map[string]int64, error) {
 }
 
 func (s *DBStorage) GetAllGaugeMetrics() (map[string]float64, error) {
-	sqlStatement := "SELECT value FROM metric WHERE metric_type = 'gauge'"
+	sqlStatement := "SELECT metric_id, value FROM metric WHERE metric_type = 'gauge'"
 
 	rows, err := s.DB.QueryContext(s.Ctx, sqlStatement)
 	if err != nil {

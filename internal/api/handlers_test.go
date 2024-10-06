@@ -413,6 +413,16 @@ func TestCheckConnectionToDB(t *testing.T) {
 	require.Equal(t, http.StatusOK, response.Code)
 }
 
+// func TestWrongMethod(t *testing.T) {
+// 	mh, cleanup := CreateMetricHandlers(t)
+// 	cleanup()
+// 	reqURLs := []string{"/", "/ping"}
+
+// 	request, err := http.NewRequest(http.MethodPost, reqURL, strings.NewReader(reqBody))
+// 	require.NoError(t, err)
+// 	response := httptest.NewRecorder()
+// }
+
 // r.Post("/update/{metric_type}/{metric_name}/{metric_value}", mware.WithLogging(mh.CreateMetric))
 func TestCreateMetricWrongMethod(t *testing.T) {
 	mh, cleanup := CreateMetricHandlers(t)
