@@ -21,6 +21,6 @@ func TestMigration(t *testing.T) {
 		}
 	}()
 
-	err := applyMigrations("host=localhost port=9999 user=postgres password=postgres dbname=metrics-test sslmode=disable")
+	err := ApplyMigrations("host=localhost port=9999 user=postgres password=postgres dbname=metrics-test sslmode=disable")
 	require.NoError(t, err)
 }

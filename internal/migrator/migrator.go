@@ -17,13 +17,13 @@ const migrationDir = "migration"
 var MigrationsFS embed.FS
 
 func MustApplyMigrations(dbParams string) {
-	err := applyMigrations(dbParams)
+	err := ApplyMigrations(dbParams)
 	if err != nil {
 		log.Fatalf("error applying migration: %v", err)
 	}
 }
 
-func applyMigrations(dbParams string) error {
+func ApplyMigrations(dbParams string) error {
 	srcDriver, err := iofs.New(MigrationsFS, migrationDir)
 	if err != nil {
 		return err
