@@ -25,18 +25,11 @@ type mertic[T any] struct {
 	Exists bool
 }
 
-// неочевидно!!!!!!!!!!!!!!!!!!!!!!!!
-func (m mertic[T]) Existing() mertic[T] {
-	m.Exists = true
-	return m
-}
-
 func CounterMetric(name string, value int64) mertic[int64] {
 	mc := mertic[int64]{
 		Type:  "counter",
 		Name:  name,
 		Value: value,
-		//metricExists: true,
 	}
 	return mc
 }
@@ -46,7 +39,6 @@ func GaugeMetric(name string, value float64) mertic[float64] {
 		Type:  "gauge",
 		Name:  name,
 		Value: value,
-		//metricExists: true,
 	}
 	return mg
 }
@@ -101,7 +93,6 @@ func TestGetMetricByValueWithErrorInGettingCounterMetric(t *testing.T) {
 
 	reqURL := fmt.Sprintf("/value/%s/%s", mc.Type, mc.Name)
 
-	// metricExists - неочевидно!!!!!!!!!!!!!!!!!!!!!!!!
 	m.EXPECT().GetCounterMetric(mc.Name).Return(mc.Value, metricExists, fmt.Errorf("Error in getting counter metric"))
 
 	request := CreateRequestWithPathValues(t, http.MethodGet, reqURL, nil, mc.Type, mc.Name)
@@ -117,12 +108,12 @@ func TestGetMetricCounterByValue(t *testing.T) {
 
 	m := mh.Storager.(*mocks.MockStorager)
 	mc := CounterMetric("C1", 10)
-	metricExists := true // !!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	metricExists := true
 
 	reqURL := fmt.Sprintf("/value/%s/%s", mc.Type, mc.Name)
 
 	// пишем, что хотим получить от заглушки
-	m.EXPECT().GetCounterMetric(mc.Name).Return(mc.Value, metricExists, nil) // !!!!!!!!!!!!!!!!!!!!
+	m.EXPECT().GetCounterMetric(mc.Name).Return(mc.Value, metricExists, nil)
 
 	// тестируем хэндлер r.Get("/value/{metric_type}/{metric_name}", mware.WithLogging(mh.GetMetricByValue))
 	// 1. Создаем запрос для обработчика
@@ -149,7 +140,7 @@ func TestGetMetricByValueWithNoGaugeMetric(t *testing.T) {
 	m := mh.Storager.(*mocks.MockStorager)
 	mg := GaugeMetric("G1", 0)
 
-	metricExists := false // !!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	metricExists := false
 
 	reqURL := fmt.Sprintf("/value/%s/%s", mg.Type, mg.Name)
 
@@ -189,16 +180,6 @@ func TestGetMetricGaugeByValue(t *testing.T) {
 	mg1 := GaugeMetric("G1", 123.0)
 	mg2 := GaugeMetric("G2", 150984.573)
 
-	// var testTable = []struct {
-	// 	mType   string
-	// 	mName   string
-	// 	want    float64
-	// 	status  int
-	// 	mExists bool
-	// }{
-	// 	{"gauge", "G1", 123.0, http.StatusOK, true},
-	// 	{"gauge", "G2", 150984.573, http.StatusOK, true},
-	// }
 	testTable := []mertic[float64]{mg1, mg2}
 	mExists := true // !!!!!!!!!!!!!!!!
 
@@ -412,16 +393,6 @@ func TestCheckConnectionToDB(t *testing.T) {
 	mh.CheckConnectionToDB(response, request)
 	require.Equal(t, http.StatusOK, response.Code)
 }
-
-// func TestWrongMethod(t *testing.T) {
-// 	mh, cleanup := CreateMetricHandlers(t)
-// 	cleanup()
-// 	reqURLs := []string{"/", "/ping"}
-
-// 	request, err := http.NewRequest(http.MethodPost, reqURL, strings.NewReader(reqBody))
-// 	require.NoError(t, err)
-// 	response := httptest.NewRecorder()
-// }
 
 // r.Post("/update/{metric_type}/{metric_name}/{metric_value}", mware.WithLogging(mh.CreateMetric))
 func TestCreateMetricWrongMethod(t *testing.T) {
