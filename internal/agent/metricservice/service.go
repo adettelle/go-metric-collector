@@ -15,15 +15,20 @@ import (
 	m "github.com/adettelle/go-metric-collector/internal/agent/metrics"
 )
 
-// Структура MetricService получает и рассылает метрики, запускает свои циклы (Loop)
+// MetricService structure receives and sends out metrics, runs its loops (Loop)
 type MetricService struct {
 	metricAccumulator *m.MetricAccumulator
 	rateLimit         int
 	client            *Client
+	ChunkSize         int
 }
 
-func NewMetricService(config *config.Config, metricAccumulator *m.MetricAccumulator, client *http.Client) *MetricService { // store StorageInterfase,
-
+func NewMetricService(
+	config *config.Config,
+	metricAccumulator *m.MetricAccumulator,
+	client *http.Client,
+	chunkSize int,
+) *MetricService {
 	return &MetricService{
 		metricAccumulator: metricAccumulator,
 		client: &Client{
@@ -33,18 +38,86 @@ func NewMetricService(config *config.Config, metricAccumulator *m.MetricAccumula
 			encryptionKey:     config.Key,
 		},
 		rateLimit: config.RateLimit,
+		ChunkSize: chunkSize,
 	}
 }
 
 type MetricRequest struct {
-	ID    string   `json:"id"`              // имя метрики
-	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
-	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
-	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
+	ID    string   `json:"id"`              // metric's name
+	MType string   `json:"type"`            // parameter that takes gauge or counter value
+	Delta *int64   `json:"delta,omitempty"` // metric's value when metric type is counter
+	Value *float64 `json:"value,omitempty"` // metric's value when metric type is gauge
+}
+
+// SendLoop sends all metrics to the server (MemStorage) with delay
+func (ms *MetricService) SendLoop(delay time.Duration, wg *sync.WaitGroup) {
+	defer wg.Done()
+	ticker := time.NewTicker(time.Second * delay)
+
+	chunks := make(chan []MetricRequest, ms.rateLimit) // 5
+	results := make(chan bool)
+	for i := 0; i < ms.rateLimit; i++ {
+		go ms.StartWorker(i, chunks, results)
+	}
+
+	go func() {
+		for res := range results {
+			log.Printf("FIXME: chunk sent result %t", res)
+		}
+	}()
+
+	for range ticker.C {
+		log.Println("Sending metrics")
+		metrics, err := ms.collectAllMetrics()
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = ms.sendMultipleMetrics(metrics, chunks)
+		if err != nil {
+			log.Fatal(err) // паника после 3ей попытки или в случае не IsRetriableErr
+		}
+		ms.metricAccumulator.Reset()
+	}
+}
+
+// worker is our worker, which accepts two channels:
+// jobs - task channel, it is the input data to be processed (входные данные для обработки)
+// results - results channel, these are the results of the worker's work
+func (ms *MetricService) StartWorker(id int, chunks <-chan []MetricRequest, results chan<- bool) {
+	// worker:
+	for chunk := range chunks {
+		err := ms.client.SendMetricsChunk(id, chunk)
+		if err != nil {
+			results <- false
+		} else {
+			results <- true
+		}
+	}
+}
+
+// RetrieveLoop collects all metrics from MemStorage.
+func (ms *MetricService) RetrieveLoop(delay time.Duration, wg *sync.WaitGroup) {
+	defer wg.Done()
+	ticker := time.NewTicker(time.Second * delay)
+
+	for range ticker.C {
+		log.Println("Retrieving metrics")
+		RetrieveAllMetrics(ms.metricAccumulator)
+	}
+}
+
+// AdditionalRetrieveLoop gets aditional metrics from MemStorage to the server with delay.
+func (ms *MetricService) AdditionalRetrieveLoop(delay time.Duration, wg *sync.WaitGroup) {
+	defer wg.Done()
+	ticker := time.NewTicker(time.Second * delay)
+
+	for range ticker.C {
+		log.Println("Retrieving additional metrics")
+		retrieveAdditionalGaugeMetrics(ms.metricAccumulator)
+	}
 }
 
 func (ms *MetricService) collectAllMetrics() ([]MetricRequest, error) {
-
 	var metrics []MetricRequest
 
 	gaugeMetrics := ms.metricAccumulator.GetAllGaugeMetrics()
@@ -76,7 +149,7 @@ func (ms *MetricService) sendMultipleMetrics(metrics []MetricRequest,
 	workerRequests chan<- []MetricRequest) error {
 	// url := fmt.Sprintf("http://%s/updates/", ms.config.Address)
 
-	chunks := collections.RangeChunks(10, metrics)
+	chunks := collections.RangeChunks(ms.ChunkSize, metrics) // 10
 
 	for _, chunk := range chunks {
 		workerRequests <- chunk
@@ -102,72 +175,4 @@ func isRetriableError(err error) bool {
 		return statusErr.Status == http.StatusInternalServerError
 	}
 	return true
-}
-
-// sendLoop sends all metrics to the server (MemStorage) with delay
-func (ms *MetricService) SendLoop(delay time.Duration, wg *sync.WaitGroup) {
-	defer wg.Done()
-	ticker := time.NewTicker(time.Second * delay)
-
-	chunks := make(chan []MetricRequest, ms.rateLimit) // 5
-	results := make(chan bool)
-	for i := 0; i < ms.rateLimit; i++ {
-		go ms.StartWorker(i, chunks, results)
-	}
-
-	go func() {
-		for res := range results {
-			log.Printf("FIXME: chunk sent result %t", res)
-		}
-	}()
-
-	for range ticker.C {
-		log.Println("Sending metrics")
-		metrics, err := ms.collectAllMetrics()
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = ms.sendMultipleMetrics(metrics, chunks)
-		if err != nil {
-			log.Fatal(err) // паника после 3ей попытки или в случае не IsRetriableErr
-		}
-		ms.metricAccumulator.Reset()
-	}
-}
-
-// worker это наш рабочий, который принимает два канала:
-// jobs - канал задач, это входные данные для обработки
-// results - канал результатов, это результаты работы воркера
-func (ms *MetricService) StartWorker(id int, chunks <-chan []MetricRequest, results chan<- bool) {
-	// worker:
-	for chunk := range chunks {
-		err := ms.client.SendMetricsChunk(id, chunk)
-		if err != nil {
-			results <- false
-		} else {
-			results <- true
-		}
-	}
-}
-
-// retrieveLoop gets all metrics from MemStorage to the server with delay
-func (ms *MetricService) RetrieveLoop(delay time.Duration, wg *sync.WaitGroup) {
-	defer wg.Done()
-	ticker := time.NewTicker(time.Second * delay)
-
-	for range ticker.C {
-		log.Println("Retrieving metrics")
-		retrieveAllMetrics(ms.metricAccumulator)
-	}
-}
-
-// AdditionalRetrieveLoop gets aditional metrics from MemStorage to the server with delay
-func (ms *MetricService) AdditionalRetrieveLoop(delay time.Duration, wg *sync.WaitGroup) {
-	defer wg.Done()
-	ticker := time.NewTicker(time.Second * delay)
-
-	for range ticker.C {
-		log.Println("Retrieving additional metrics")
-		retrieveAdditionalGaugeMetrics(ms.metricAccumulator)
-	}
 }

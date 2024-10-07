@@ -23,9 +23,7 @@ func (c *Client) SendMetricsChunk(id int, chunk []MetricRequest) error {
 
 	data, err := json.Marshal(chunk)
 	if err != nil {
-		// return err
 		log.Printf("error %v in sending chun in worker %d\n", err, id)
-		// results <- false
 		return err // прерываем итерацию, но не сам worker и не цикл
 	}
 
@@ -38,7 +36,6 @@ func (c *Client) SendMetricsChunk(id int, chunk []MetricRequest) error {
 
 	if err != nil {
 		log.Printf("error %v in sending chun in worker %d\n", err, id)
-		// results <- false
 		return err
 	}
 
@@ -59,7 +56,7 @@ func (c *Client) doSend(data *bytes.Buffer) error {
 		req.Header.Set("HashSHA256", string(hash))
 	}
 
-	resp, err := c.client.Do(req) // http.DefaultClient.Do(req)
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return err
 	}

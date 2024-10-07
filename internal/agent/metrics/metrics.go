@@ -1,5 +1,5 @@
-// слой хранения: отвечает за хранение метрик (подразумевается два дериватива: положить и достать)
-// аналог банковской ячейки (положить, достать)
+// Storage layer: responsible for storing metrics (implies two derivatives: put and take out)
+// analogous to a safety deposit box (put, take out).
 package metrics
 
 import (
@@ -7,25 +7,30 @@ import (
 )
 
 type Metric struct {
-	ID    string   `json:"id"`              // имя метрики
-	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
-	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
-	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
+	ID    string   `json:"id"`              // metric's name
+	MType string   `json:"type"`            // parameter that takes gauge or counter value
+	Delta *int64   `json:"delta,omitempty"` // metric's value when metric type is counter
+	Value *float64 `json:"value,omitempty"` // metric's value when metric type is gauge
 }
 
 type AllMetrics struct {
 	AllMetrics []Metric `json:"metrics"`
 }
 
-// MetricAccumulator is used for storaging metrics
+// MetricAccumulator is used for storaging metrics.
 type MetricAccumulator struct {
-	// sync.RWMutex
 	gauge   *sync.Map // map[string]float64 // имя метрики: ее значение
 	counter *sync.Map // map[string]int64
 }
 
-// Reset() обнуляет карты Gauge и Counter в структуре MemStorage
-// метод применяется после отправки всех метрик
+func New() *MetricAccumulator {
+	gauge := &sync.Map{}
+	counter := &sync.Map{}
+	return &MetricAccumulator{gauge: gauge, counter: counter}
+}
+
+// Reset() resets the Gauge and Counter maps in the MemStorage structure,
+// the method is applied after sending all metrics.
 func (ma *MetricAccumulator) Reset() {
 	ma.gauge.Range(func(key, value any) bool {
 		ma.gauge.Delete(key)
@@ -35,12 +40,6 @@ func (ma *MetricAccumulator) Reset() {
 		ma.counter.Delete(key)
 		return true
 	})
-}
-
-func New() *MetricAccumulator {
-	gauge := &sync.Map{}
-	counter := &sync.Map{}
-	return &MetricAccumulator{gauge: gauge, counter: counter}
 }
 
 func (ma *MetricAccumulator) AddGaugeMetric(name string, value float64) {
