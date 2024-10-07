@@ -19,7 +19,17 @@ import (
 	"github.com/adettelle/go-metric-collector/internal/storage/memstorage"
 )
 
+var (
+	buildVersion string = "N/A"
+	buildDate    string = "N/A"
+	buildCommit  string = "N/A"
+)
+
 func main() {
+	fmt.Fprintf(os.Stdout, "Build version: %s\n", buildVersion)
+	fmt.Fprintf(os.Stdout, "Build date: %s\n", buildDate)
+	fmt.Fprintf(os.Stdout, "Build commit: %s\n", buildCommit)
+
 	cfg, err := config.New()
 	if err != nil {
 		log.Fatal(err)
