@@ -102,8 +102,7 @@ func (s *DBStorage) GetAllCounterMetrics() (map[string]int64, error) {
 	for rows.Next() {
 		var name string
 		var d int64
-		err := rows.Scan(&name, &d)
-		if err != nil {
+		if err = rows.Scan(&name, &d); err != nil {
 			return nil, err
 		}
 		res[name] = d
@@ -118,6 +117,8 @@ func (s *DBStorage) GetAllCounterMetrics() (map[string]int64, error) {
 }
 
 func (s *DBStorage) GetAllGaugeMetrics() (map[string]float64, error) {
+	var err error
+
 	sqlStatement := "SELECT metric_id, value FROM metric WHERE metric_type = 'gauge'"
 
 	rows, err := s.DB.QueryContext(s.Ctx, sqlStatement)
@@ -130,10 +131,10 @@ func (s *DBStorage) GetAllGaugeMetrics() (map[string]float64, error) {
 	for rows.Next() {
 		var name string
 		var v float64
-		err := rows.Scan(&name, &v)
-		if err != nil {
+		if err = rows.Scan(&name, &v); err != nil {
 			return nil, err
 		}
+
 		res[name] = v
 	}
 	// проверяем на ошибки

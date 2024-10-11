@@ -50,17 +50,17 @@ func ReadMetricsSnapshot(fileName string) (*MemStorage, error) {
 	}
 	defer jsonFile.Close()
 
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		panic("cannot initialize zap")
-	}
+	logger := zap.Must(zap.NewDevelopment())
+	// if err != nil {
+	// 	panic("cannot initialize zap")
+	// }
 	defer logger.Sync()
 	logger.Info("reading from to file", zap.String("fileName", fileName))
 	log.Printf("reading from file: %s", fileName)
 	// read our opened jsonFile as a byte array.
 	byteValue, err := io.ReadAll(jsonFile)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	// we initialize our AllMetrics array

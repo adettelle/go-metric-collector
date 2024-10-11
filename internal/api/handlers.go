@@ -49,6 +49,9 @@ func NewMetricHandlers(storager Storager, config *config.Config) *MetricHandlers
 // MetricUpdate handles HTTP requests to update a metric,
 // accepting a JSON object in the request body.
 func (mh *MetricHandlers) MetricUpdate(w http.ResponseWriter, r *http.Request) {
+	var err error
+	var ok bool
+
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -58,28 +61,27 @@ func (mh *MetricHandlers) MetricUpdate(w http.ResponseWriter, r *http.Request) {
 	var buf bytes.Buffer
 
 	// Read the request body
-	_, err := buf.ReadFrom(r.Body)
+	_, err = buf.ReadFrom(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	// Deserialize JSON into Metric
-	if err := json.Unmarshal(buf.Bytes(), &metric); err != nil {
+	if err = json.Unmarshal(buf.Bytes(), &metric); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	switch {
 	case metric.MType == "gauge":
-		err := mh.Storager.AddGaugeMetric(metric.ID, *metric.Value)
-		if err != nil {
+		if err = mh.Storager.AddGaugeMetric(metric.ID, *metric.Value); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
 
-		_, ok, err := mh.Storager.GetGaugeMetric(metric.ID)
+		_, ok, err = mh.Storager.GetGaugeMetric(metric.ID)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -98,7 +100,7 @@ func (mh *MetricHandlers) MetricUpdate(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 
-		_, ok, err := mh.Storager.GetCounterMetric(metric.ID)
+		_, ok, err = mh.Storager.GetCounterMetric(metric.ID)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -111,7 +113,7 @@ func (mh *MetricHandlers) MetricUpdate(w http.ResponseWriter, r *http.Request) {
 
 	default:
 		w.WriteHeader(http.StatusBadRequest)
-		_, err := w.Write([]byte("No such metric"))
+		_, err = w.Write([]byte("No such metric"))
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -134,6 +136,8 @@ func (mh *MetricHandlers) MetricUpdate(w http.ResponseWriter, r *http.Request) {
 // MetricValue retrieves the current value of a metric provided in the
 // request body as a JSON object.
 func (mh *MetricHandlers) MetricValue(w http.ResponseWriter, r *http.Request) {
+	var err error
+
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -143,20 +147,20 @@ func (mh *MetricHandlers) MetricValue(w http.ResponseWriter, r *http.Request) {
 	var buf bytes.Buffer
 
 	// Read the request body
-	_, err := buf.ReadFrom(r.Body)
+	_, err = buf.ReadFrom(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	// Deserialize JSON into Metric
-	if err := json.Unmarshal(buf.Bytes(), &metric); err != nil {
+	if err = json.Unmarshal(buf.Bytes(), &metric); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	switch {
 	case metric.MType == "gauge":
-		value, ok, err := mh.Storager.GetGaugeMetric(metric.ID)
-		if err != nil {
+		value, ok, gaugeMetricErr := mh.Storager.GetGaugeMetric(metric.ID)
+		if gaugeMetricErr != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -168,8 +172,8 @@ func (mh *MetricHandlers) MetricValue(w http.ResponseWriter, r *http.Request) {
 		metric.Value = &value
 
 	case metric.MType == "counter":
-		value, ok, err := mh.Storager.GetCounterMetric(metric.ID)
-		if err != nil {
+		value, ok, counterMetricErr := mh.Storager.GetCounterMetric(metric.ID)
+		if counterMetricErr != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -182,7 +186,7 @@ func (mh *MetricHandlers) MetricValue(w http.ResponseWriter, r *http.Request) {
 
 	default:
 		w.WriteHeader(http.StatusBadRequest)
-		_, err := w.Write([]byte("No such metric"))
+		_, err = w.Write([]byte("No such metric"))
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -335,6 +339,9 @@ func (mh *MetricHandlers) CheckConnectionToDB(w http.ResponseWriter, r *http.Req
 // MetricsUpdate processes an HTTP POST request that contains a batch of
 // metrics ([]Metrics) in JSON format.
 func (mh *MetricHandlers) MetricsUpdate(w http.ResponseWriter, r *http.Request) {
+	var err error
+	var ok bool
+
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -344,7 +351,7 @@ func (mh *MetricHandlers) MetricsUpdate(w http.ResponseWriter, r *http.Request) 
 	var buf bytes.Buffer
 
 	// читаем тело запроса
-	_, err := buf.ReadFrom(r.Body)
+	_, err = buf.ReadFrom(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -363,8 +370,7 @@ func (mh *MetricHandlers) MetricsUpdate(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// десериализуем JSON в Metrric
-	if err := json.Unmarshal(buf.Bytes(), &Metrics); err != nil {
-		log.Println("!!!!!!!!!!!", err)
+	if err = json.Unmarshal(buf.Bytes(), &Metrics); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -372,14 +378,13 @@ func (mh *MetricHandlers) MetricsUpdate(w http.ResponseWriter, r *http.Request) 
 	for _, metric := range Metrics {
 		switch {
 		case metric.MType == "gauge":
-			err := mh.Storager.AddGaugeMetric(metric.ID, *metric.Value)
-			if err != nil {
+			if err = mh.Storager.AddGaugeMetric(metric.ID, *metric.Value); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
 
-			_, ok, err := mh.Storager.GetGaugeMetric(metric.ID)
+			_, ok, err = mh.Storager.GetGaugeMetric(metric.ID)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -390,14 +395,13 @@ func (mh *MetricHandlers) MetricsUpdate(w http.ResponseWriter, r *http.Request) 
 			}
 
 		case metric.MType == "counter":
-			err := mh.Storager.AddCounterMetric(metric.ID, *metric.Delta)
-			if err != nil {
+			if err = mh.Storager.AddCounterMetric(metric.ID, *metric.Delta); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
 
-			_, ok, err := mh.Storager.GetCounterMetric(metric.ID)
+			_, ok, err = mh.Storager.GetCounterMetric(metric.ID)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -409,7 +413,7 @@ func (mh *MetricHandlers) MetricsUpdate(w http.ResponseWriter, r *http.Request) 
 
 		default:
 			w.WriteHeader(http.StatusBadRequest)
-			_, err := w.Write([]byte("No such metric"))
+			_, err = w.Write([]byte("No such metric"))
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return

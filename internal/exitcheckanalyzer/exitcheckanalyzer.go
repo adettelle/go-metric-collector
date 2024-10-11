@@ -16,7 +16,7 @@ var ExitCheckAnalyzer = &analysis.Analyzer{
 // анализатор, запрещающий использовать прямой вызов os.Exit в функции main пакета main.
 func run(pass *analysis.Pass) (interface{}, error) {
 	isTargetPkg := func(x *ast.File) bool {
-		return x.Name.Name == "main"
+		return x.Name.Name == "main" && !ast.IsGenerated(x)
 	}
 
 	isTargetFunc := func(x *ast.FuncDecl) bool {

@@ -251,7 +251,9 @@ func testGetValue(mType, mName string, mAPI *api.MetricHandlers) (string, int) {
 	mAPI.GetMetricByValue(w, req)
 
 	res := w.Result()
-	defer res.Body.Close()
+	defer func() {
+		_ = res.Body.Close()
+	}()
 	code := res.StatusCode
 
 	return w.Body.String(), code
@@ -264,10 +266,10 @@ func TestGetMetricByValue(t *testing.T) {
 	}
 	mAPI := api.NewMetricHandlers(metricStore, Config)
 
-	metricStore.AddCounterMetric("C1", 123)
-	metricStore.AddCounterMetric("C1", 456)
-	metricStore.AddGaugeMetric("G1", 123)
-	metricStore.AddGaugeMetric("G2", 150984.573)
+	_ = metricStore.AddCounterMetric("C1", 123)
+	_ = metricStore.AddCounterMetric("C1", 456)
+	_ = metricStore.AddGaugeMetric("G1", 123)
+	_ = metricStore.AddGaugeMetric("G2", 150984.573)
 
 	var testTable = []struct {
 		mType  string

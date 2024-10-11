@@ -26,6 +26,8 @@ var (
 )
 
 func main() {
+	var err error
+
 	fmt.Fprintf(os.Stdout, "Build version: %s\n", buildVersion)
 	fmt.Fprintf(os.Stdout, "Build date: %s\n", buildDate)
 	fmt.Fprintf(os.Stdout, "Build commit: %s\n", buildCommit)
@@ -46,8 +48,7 @@ func main() {
 		fmt.Printf("Starting server on %s\n", cfg.Address)
 		mAPI := api.NewMetricHandlers(storager, cfg)
 		router := api.NewMetricRouter(storager, mAPI)
-		err := http.ListenAndServe(cfg.Address, router)
-		if err != nil {
+		if err = http.ListenAndServe(cfg.Address, router); err != nil {
 			log.Fatal(err)
 		}
 	}()

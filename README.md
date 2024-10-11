@@ -30,3 +30,14 @@ git fetch template && git checkout template/main .github
 При мёрже ветки с инкрементом в основную ветку `main` будут запускаться все автотесты.
 
 Подробнее про локальный и автоматический запуск читайте в [README автотестов](https://github.com/Yandex-Practicum/go-autotests).
+
+## локальное тестирование
+
+Для запуска локальных тестов с БД необходимо запустить команду 
+`docker-compose  -f ./test.docker-compose.yaml up -d && go test ./...`
+
+## запуск линтера
+
+В проекте используется специализированный multichecker. 
+Для сборки воспользуйтесь командой `go build ./cmd/staticlint/`
+Для запуска - `./staticlint ./...`

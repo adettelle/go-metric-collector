@@ -1,10 +1,15 @@
+// Multichecker contains the standard static analyzers of golang.org/x/tools/go/analysis/passes package,
+// all SA analyzers of staticcheck.io package,
+// analyzer of other packages from staticcheck.io,
+// two public analyzers,
+// custom analyzer prohibiting the use of os.Exit direct call in the main function of the main package.
 package main
 
 import (
 	"github.com/adettelle/go-metric-collector/internal/exitcheckanalyzer"
-	"github.com/fatih/errwrap/errwrap"                        //
-	critic "github.com/go-critic/go-critic/checkers/analyzer" //
-	"github.com/kisielk/errcheck/errcheck"                    //
+	"github.com/fatih/errwrap/errwrap"
+	critic "github.com/go-critic/go-critic/checkers/analyzer"
+
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/multichecker"
 	"golang.org/x/tools/go/analysis/passes/appends"
@@ -110,8 +115,7 @@ func main() {
 		unusedresult.Analyzer,
 		unusedwrite.Analyzer,
 		usesgenerics.Analyzer,
-		// двух или более любых публичных анализаторов на ваш выбор
-		errcheck.Analyzer,
+		// two public analyzers
 		errwrap.Analyzer,
 		critic.Analyzer,
 		// analyzer finding expression os.Exit
@@ -121,7 +125,7 @@ func main() {
 	for _, v := range staticcheck.Analyzers {
 		mychecks = append(mychecks, v.Analyzer)
 	}
-	// не менее одного анализатора остальных классов пакета staticcheck.io
+	// analyzer of other packages from staticcheck.io
 	for _, v := range staticcheck.Analyzers {
 		if v.Analyzer.Name == "ST1013" {
 			mychecks = append(mychecks, v.Analyzer)

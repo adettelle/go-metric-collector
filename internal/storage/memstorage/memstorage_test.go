@@ -119,7 +119,8 @@ func TestReset(t *testing.T) {
 	err = ms.AddGaugeMetric("g1", 1.1)
 	require.NoError(t, err)
 
-	ms.Reset()
+	err = ms.Reset()
+	require.NoError(t, err)
 
 	cMetrics, err := ms.GetAllCounterMetrics()
 	require.NoError(t, err)

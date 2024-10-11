@@ -56,7 +56,7 @@ func retrieveAdditionalGaugeMetrics(metricAccumulator *m.MetricAccumulator) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	cpu.Info()
+
 	CPUutilizations, err := cpu.Percent(0, true)
 	if err != nil {
 		log.Fatal(err)

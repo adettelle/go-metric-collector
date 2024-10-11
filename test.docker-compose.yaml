@@ -1,0 +1,12 @@
+version: "3"
+services:
+  postgres:
+    restart: unless-stopped
+    image: postgres:latest
+    ports:
+      - "9999:5432"
+    environment:
+      - "POSTGRES_PASSWORD=123456"
+      - "POSTGRES_USER=postgres"
+      - "POSTGRES_DB=test_db"
+

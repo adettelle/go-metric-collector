@@ -12,11 +12,11 @@ import (
 
 type Config struct {
 	Address       string
-	StoreInterval int    // по умолчанию 300 сек
 	StoragePath   string // по умолчанию /tmp/metrics-db.json
-	Restore       bool   // по умолчанию true
 	DBParams      string
 	Key           string
+	StoreInterval int  // по умолчанию 300 сек
+	Restore       bool // по умолчанию true
 }
 
 func New() (*Config, error) {

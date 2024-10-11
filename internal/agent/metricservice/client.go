@@ -14,11 +14,13 @@ import (
 type Client struct {
 	client            *http.Client
 	url               string
-	maxRequestRetries int
 	encryptionKey     string
+	maxRequestRetries int
 }
 
 func (c *Client) SendMetricsChunk(id int, chunk []MetricRequest) error {
+	var err error
+
 	log.Printf("Sending chunk on worker %d\n", id)
 
 	data, err := json.Marshal(chunk)
@@ -30,7 +32,8 @@ func (c *Client) SendMetricsChunk(id int, chunk []MetricRequest) error {
 	_, err = retries.RunWithRetries("Send metrics request",
 		c.maxRequestRetries,
 		func() (*any, error) {
-			err := c.doSend(bytes.NewBuffer(data))
+			// nolint:staticcheck
+			err = c.doSend(bytes.NewBuffer(data))
 			return nil, err
 		}, isRetriableError)
 

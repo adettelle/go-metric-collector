@@ -19,9 +19,9 @@ import (
 )
 
 type mertic[T any] struct {
+	Value  T
 	Type   string
 	Name   string
-	Value  T
 	Exists bool
 }
 
