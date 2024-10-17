@@ -7,10 +7,10 @@ import (
 )
 
 type Metric struct {
-	ID    string   `json:"id"`              // metric's name
-	MType string   `json:"type"`            // parameter that takes gauge or counter value
 	Delta *int64   `json:"delta,omitempty"` // metric's value when metric type is counter
 	Value *float64 `json:"value,omitempty"` // metric's value when metric type is gauge
+	ID    string   `json:"id"`              // metric's name
+	MType string   `json:"type"`            // parameter that takes gauge or counter value
 }
 
 type AllMetrics struct {

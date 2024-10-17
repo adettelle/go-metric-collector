@@ -14,10 +14,10 @@ import (
 
 type Config struct {
 	Address           string `env:"ADDRESS" flag:"a" default:"localhost:8080"`
-	PollInterval      int    `env:"POLL_INTERVAL" flag:"p" default:"2"`    // по умолчанию 2 сек
-	ReportInterval    int    `env:"REPORT_INTERVAL" flag:"r" default:"10"` // по умолчанию 10 сек
 	Key               string `env:"KEY" flag:"k"`                          // ключ для подписи
 	MaxRequestRetries int    `default:"3"`                                 // максимальное количество попыток запроса
+	PollInterval      int    `env:"POLL_INTERVAL" flag:"p" default:"2"`    // по умолчанию 2 сек
+	ReportInterval    int    `env:"REPORT_INTERVAL" flag:"r" default:"10"` // по умолчанию 10 сек
 	// количество одновременно исходящих запросов на сервер
 	// (количество задач, которое одновременно происходит в worker pool)
 	RateLimit int `env:"RATE_LIMIT" flag:"l" default:"1"`

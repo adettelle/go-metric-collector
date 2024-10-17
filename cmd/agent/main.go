@@ -3,8 +3,10 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -15,7 +17,19 @@ import (
 	"github.com/adettelle/go-metric-collector/internal/agent/metricservice"
 )
 
+var (
+	buildVersion string = "N/A"
+	buildDate    string = "N/A"
+	buildCommit  string = "N/A"
+)
+
 func main() {
+	var err error
+
+	fmt.Fprintf(os.Stdout, "Build version: %s\n", buildVersion)
+	fmt.Fprintf(os.Stdout, "Build date: %s\n", buildDate)
+	fmt.Fprintf(os.Stdout, "Build commit: %s\n", buildCommit)
+
 	metricAccumulator := metrics.New()
 
 	config, err := config.New()
@@ -32,7 +46,11 @@ func main() {
 	var wg sync.WaitGroup
 	wg.Add(3)
 
-	go mservice.SendLoop(time.Duration(config.ReportInterval), &wg)
+	go func() {
+		if err = mservice.SendLoop(time.Duration(config.ReportInterval), &wg); err != nil {
+			log.Fatal(err)
+		}
+	}()
 	go mservice.RetrieveLoop(time.Duration(config.PollInterval), &wg)
 	go mservice.AdditionalRetrieveLoop(time.Duration(config.PollInterval), &wg)
 

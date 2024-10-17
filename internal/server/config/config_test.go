@@ -9,19 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// func TestGetKeyWithNoEnv(t *testing.T) {
-// 	expected := "hello"
-// 	res := getKey(&expected)
-// 	require.Equal(t, res, expected)
-// }
-
-// func TestGetKeyWithEnv(t *testing.T) {
-// 	param := "hello"
-// 	os.Setenv("KEY", "keyFromEnv")
-// 	res := getKey(&param)
-// 	require.Equal(t, res, os.Getenv("KEY"))
-// }
-
 func TestDefaultConfig(t *testing.T) {
 	cfg, err := New()
 	require.Nil(t, err)
@@ -50,7 +37,7 @@ func TestShouldRestoreFileNotExists(t *testing.T) {
 }
 
 func TestShouldRestoreEmptyFileExists(t *testing.T) {
-	file, err := os.CreateTemp("/tmp", "testfile.json")
+	file, err := os.CreateTemp(os.TempDir(), "testfile.json") // "/tmp",
 	require.NoError(t, err)
 
 	cfg := &Config{
@@ -66,7 +53,7 @@ func TestShouldRestoreEmptyFileExists(t *testing.T) {
 }
 
 func TestShouldRestoreFileExists(t *testing.T) {
-	file, err := os.CreateTemp("/tmp", "testfile.json")
+	file, err := os.CreateTemp(os.TempDir(), "testfile.json")
 	require.NoError(t, err)
 	err = os.WriteFile(file.Name(), []byte("{}"), 0700)
 	require.NoError(t, err)

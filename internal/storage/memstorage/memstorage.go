@@ -9,10 +9,10 @@ import (
 )
 
 type Metric struct {
-	ID    string   `json:"id"`              // имя метрики
-	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
 	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
 	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
+	ID    string   `json:"id"`              // имя метрики
+	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
 }
 
 type AllMetrics struct {
@@ -22,12 +22,12 @@ type AllMetrics struct {
 // MemStorage is used for storaging metrics
 // MemStorage - это имплементация интерфейса Storage
 type MemStorage struct {
-	sync.RWMutex
 	gauge   map[string]float64 // имя метрики: ее значение
 	counter map[string]int64
 	// если config.StoreInterval равен 0, то мы назначаем MemStorage FileName,
 	// чтобы он мог синхронно писать изменения
 	FileName string
+	sync.RWMutex
 }
 
 func New(shouldRestore bool, storagePath string) (*MemStorage, error) {
@@ -46,20 +46,12 @@ func New(shouldRestore bool, storagePath string) (*MemStorage, error) {
 
 	ms := &MemStorage{gauge: gauge, counter: counter, FileName: storagePath}
 
-	// if storeInterval > 0 {
-	// 	go StartSaveLoop(time.Second*time.Duration(storeInterval), storagePath, ms)
-	// } else if storeInterval == 0 {
-	// 	// если config.StoreInterval равен 0, то мы назначаем MemStorage FileName, чтобы
-	// 	// он мог синхронно писать изменения
-	// 	ms.FileName = storagePath
-	// }
-
 	return ms, nil
 }
 
 // Reset() обнуляет карты Gauge и Counter в структуре MemStorage
 // метод применяется после отправки всех метрик
-func (ms *MemStorage) Reset() {
+func (ms *MemStorage) Reset() error {
 	ms.Lock()
 	defer ms.Unlock()
 
@@ -73,9 +65,10 @@ func (ms *MemStorage) Reset() {
 	if ms.FileName != "" {
 		err := WriteMetricsSnapshot(ms.FileName, ms)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 	}
+	return nil
 }
 
 func (ms *MemStorage) GetGaugeMetric(name string) (float64, bool, error) {
@@ -168,11 +161,12 @@ func AllMetricsToMemStorage(am *AllMetrics) (*MemStorage, error) {
 	}
 
 	for _, metric := range am.AllMetrics {
-		if metric.MType == "gauge" {
+		switch metric.MType {
+		case "gauge":
 			ms.AddGaugeMetric(metric.ID, *metric.Value)
-		} else if metric.MType == "counter" {
+		case "counter":
 			ms.AddCounterMetric(metric.ID, *metric.Delta)
-		} else {
+		default:
 			return nil, fmt.Errorf("unknown metric type: %s", metric.MType)
 		}
 	}

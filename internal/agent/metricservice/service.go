@@ -18,8 +18,8 @@ import (
 // MetricService structure receives and sends out metrics, runs its loops (Loop)
 type MetricService struct {
 	metricAccumulator *m.MetricAccumulator
-	rateLimit         int
 	client            *Client
+	rateLimit         int
 	ChunkSize         int
 }
 
@@ -43,14 +43,14 @@ func NewMetricService(
 }
 
 type MetricRequest struct {
-	ID    string   `json:"id"`              // metric's name
-	MType string   `json:"type"`            // parameter that takes gauge or counter value
 	Delta *int64   `json:"delta,omitempty"` // metric's value when metric type is counter
 	Value *float64 `json:"value,omitempty"` // metric's value when metric type is gauge
+	ID    string   `json:"id"`              // metric's name
+	MType string   `json:"type"`            // parameter that takes gauge or counter value
 }
 
 // SendLoop sends all metrics to the server (MemStorage) with delay
-func (ms *MetricService) SendLoop(delay time.Duration, wg *sync.WaitGroup) {
+func (ms *MetricService) SendLoop(delay time.Duration, wg *sync.WaitGroup) error {
 	defer wg.Done()
 	ticker := time.NewTicker(time.Second * delay)
 
@@ -70,14 +70,15 @@ func (ms *MetricService) SendLoop(delay time.Duration, wg *sync.WaitGroup) {
 		log.Println("Sending metrics")
 		metrics, err := ms.collectAllMetrics()
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 		err = ms.sendMultipleMetrics(metrics, chunks)
 		if err != nil {
-			log.Fatal(err) // паника после 3ей попытки или в случае не IsRetriableErr
+			return err // паника после 3ей попытки или в случае не IsRetriableErr
 		}
 		ms.metricAccumulator.Reset()
 	}
+	return nil
 }
 
 // worker is our worker, which accepts two channels:
