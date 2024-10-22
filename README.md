@@ -41,3 +41,12 @@ git fetch template && git checkout template/main .github
 В проекте используется специализированный multichecker. 
 Для сборки воспользуйтесь командой `go build ./cmd/staticlint/`
 Для запуска - `./staticlint ./...`
+
+## создание сертификатов 
+
+Для создания сертификатов и ключей асимметричного шифрования необходимо запустить команду
+go run ./cmd/cert/ -p='server' && go run ./cmd/cert/ -p='client'
+
+## запуск с флагами 
+go run ./cmd/server/ -cert './keys/server_cert.pem' -crypto-key './keys/server_privatekey.pem' 
+go run ./cmd/agent/ -client-cert './keys/client_cert.pem' -crypto-key './keys/client_privatekey.pem' -server-cert './keys/server_cert.pem'
