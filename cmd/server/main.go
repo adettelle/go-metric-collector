@@ -48,7 +48,7 @@ func main() {
 		fmt.Printf("Starting server on %s\n", cfg.Address)
 		mAPI := api.NewMetricHandlers(storager, cfg)
 		router := api.NewMetricRouter(storager, mAPI)
-		if err = http.ListenAndServe(cfg.Address, router); err != nil {
+		if err = http.ListenAndServeTLS(cfg.Address, cfg.Cert, cfg.CryptoKey, router); err != nil {
 			log.Fatal(err)
 		}
 	}()
@@ -59,7 +59,6 @@ func main() {
 	done := make(chan bool, 1)
 
 	go func() {
-
 		s := <-c
 		log.Printf("Got termination signal: %s. Graceful shutdown", s)
 
@@ -76,7 +75,7 @@ func main() {
 // initStorager not only constructs, but also starts related processes
 // depending on which storager we choose.
 func initStorager(cfg *config.Config) (api.Storager, error) {
-	log.Println("config in initStorager:", cfg)
+	// log.Println("config in initStorager:", cfg)
 	var storager api.Storager
 
 	if cfg.DBParams != "" {
