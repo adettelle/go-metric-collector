@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/adettelle/go-metric-collector/internal/api"
@@ -160,7 +161,8 @@ func testPostMetric(t *testing.T, request *http.Request, expectedStatus int, exp
 	if err != nil {
 		log.Fatal(err)
 	}
-	mAPI := api.NewMetricHandlers(metricStore, Config)
+	var wg *sync.WaitGroup
+	mAPI := api.NewMetricHandlers(metricStore, Config, wg)
 	w := httptest.NewRecorder()
 	mAPI.CreateMetric(w, request)
 
@@ -213,7 +215,8 @@ func TestGetAllMetrics(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	metricAPI := api.NewMetricHandlers(metricStore, Config)
+	var wg *sync.WaitGroup
+	metricAPI := api.NewMetricHandlers(metricStore, Config, wg)
 	metricStore.AddCounterMetric("C1", 123)
 	metricStore.AddCounterMetric("C1", 456)
 	metricStore.AddGaugeMetric("G1", 123)
@@ -258,12 +261,12 @@ func testGetValue(mType, mName string, mAPI *api.MetricHandlers) (string, int) {
 	return w.Body.String(), code
 }
 func TestGetMetricByValue(t *testing.T) {
-
+	var wg *sync.WaitGroup
 	metricStore, err := memstorage.New(false, "")
 	if err != nil {
 		log.Fatal(err)
 	}
-	mAPI := api.NewMetricHandlers(metricStore, Config)
+	mAPI := api.NewMetricHandlers(metricStore, Config, wg)
 
 	_ = metricStore.AddCounterMetric("C1", 123)
 	_ = metricStore.AddCounterMetric("C1", 456)

@@ -80,7 +80,6 @@ func main() {
 	additionalRetrieveLoopTerm := make(chan struct{})
 	go mservice.AdditionalRetrieveLoop(time.Duration(config.PollInterval), &wg, additionalRetrieveLoopTerm)
 
-	// TODO
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 

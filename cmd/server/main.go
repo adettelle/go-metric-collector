@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/adettelle/go-metric-collector/internal/api"
@@ -44,9 +46,10 @@ func main() {
 		log.Fatal(err)
 	}
 
+	var wg sync.WaitGroup
+	mAPI := api.NewMetricHandlers(storager, cfg, &wg)
 	go func() {
 		fmt.Printf("Starting server on %s\n", cfg.Address)
-		mAPI := api.NewMetricHandlers(storager, cfg)
 		router := api.NewMetricRouter(storager, mAPI)
 		if err = http.ListenAndServeTLS(cfg.Address, cfg.Cert, cfg.CryptoKey, router); err != nil {
 			log.Fatal(err)
@@ -54,19 +57,21 @@ func main() {
 	}()
 
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
+	signal.Notify(c, os.Interrupt, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	done := make(chan bool, 1)
 
 	go func() {
 		s := <-c
 		log.Printf("Got termination signal: %s. Graceful shutdown", s)
+		mAPI.Finalizing = true
 
 		err = storager.Finalize()
 		if err != nil {
 			log.Println(err)
 			log.Println("unable to write to file")
 		}
+		mAPI.Wg.Wait() //  ждем завершение update'ов
 		done <- true
 	}()
 	<-done
