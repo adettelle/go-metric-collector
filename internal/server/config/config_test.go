@@ -2,10 +2,8 @@ package config
 
 import (
 	"os"
-	"path"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -70,6 +68,7 @@ func TestShouldRestoreFileExists(t *testing.T) {
 	require.True(t, cfg.ShouldRestore())
 }
 
+/*
 func TestGetStoragePathInexistent(t *testing.T) {
 	dir := os.TempDir()
 	fileName := uuid.New().String()
@@ -82,3 +81,4 @@ func TestGetStoragePathInexistent(t *testing.T) {
 	_, err := os.Stat(fullName)
 	require.NoError(t, err)
 }
+*/

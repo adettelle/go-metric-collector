@@ -156,7 +156,6 @@ func TestPostCounterMetric(t *testing.T) {
 }
 
 func testPostMetric(t *testing.T, request *http.Request, expectedStatus int, expectedBody string) *http.Response {
-
 	metricStore, err := memstorage.New(false, "")
 	if err != nil {
 		log.Fatal(err)

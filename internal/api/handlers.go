@@ -4,6 +4,9 @@ package api
 import (
 	"bytes"
 	"crypto/hmac"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha512"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -357,7 +360,6 @@ func (mh *MetricHandlers) MetricsUpdate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// log.Println("mh.Config.Key:", mh.Config.Key)
 	if mh.Config.Key != "" {
 		// вычисляем хеш и сравниваем в HTTP-заголовке запроса с именем HashSHA256
 		hash := security.CreateSign(buf.String(), mh.Config.Key)
@@ -370,7 +372,7 @@ func (mh *MetricHandlers) MetricsUpdate(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// десериализуем JSON в Metrric
-	if err = json.Unmarshal(buf.Bytes(), &Metrics); err != nil {
+	if err = json.Unmarshal(buf.Bytes(), &Metrics); err != nil { //  decryptedBody
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -429,4 +431,14 @@ func (mh *MetricHandlers) MetricsUpdate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	w.WriteHeader(http.StatusOK)
+}
+
+// DecryptWithPrivateKey decrypts data with private key
+func DecryptWithPrivateKey(ciphertext []byte, priv *rsa.PrivateKey) ([]byte, error) {
+	hash := sha512.New()
+	plaintext, err := rsa.DecryptOAEP(hash, rand.Reader, priv, ciphertext, nil)
+	if err != nil {
+		return nil, err
+	}
+	return plaintext, nil
 }
