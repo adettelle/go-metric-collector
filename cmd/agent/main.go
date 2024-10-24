@@ -96,11 +96,15 @@ func main() {
 		cancelSendLoop()
 	}()
 
+	startProfiling()
+
+	wg.Wait()
+}
+
+func startProfiling() {
 	go func() {
-		if err = http.ListenAndServe(":9000", nil); err != nil {
+		if err := http.ListenAndServe(":9000", nil); err != nil {
 			log.Fatal(err)
 		}
 	}()
-
-	wg.Wait()
 }
