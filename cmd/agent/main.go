@@ -3,11 +3,16 @@
 package main
 
 import (
+	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 
 	_ "net/http/pprof"
@@ -24,6 +29,7 @@ var (
 )
 
 func main() {
+
 	var err error
 
 	fmt.Fprintf(os.Stdout, "Build version: %s\n", buildVersion)
@@ -37,8 +43,26 @@ func main() {
 		log.Fatal(err)
 	}
 
+	caCert, err := os.ReadFile(config.ServerCert) // "./keys/server_cert.pem"
+	if err != nil {
+		log.Fatal("error in reading certificate: ", err)
+	}
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+
+	// "./keys/client_cert.pem", "./keys/client_privatekey.pem"
+	cert, err := tls.LoadX509KeyPair(config.ClientCert, config.CryptoKey)
+	if err != nil {
+		log.Fatal("error in loading key pair: ", err)
+	}
+
 	client := &http.Client{
-		Timeout: time.Second * 2, // интервал ожидания: 2 секунды
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs:      caCertPool,
+				Certificates: []tls.Certificate{cert},
+			},
+		},
 	}
 
 	mservice := metricservice.NewMetricService(config, metricAccumulator, client, 10)
@@ -46,17 +70,41 @@ func main() {
 	var wg sync.WaitGroup
 	wg.Add(3)
 
+	sendLoopCtxWithCancel, cancelSendLoop := context.WithCancel(context.Background())
+
 	go func() {
-		if err = mservice.SendLoop(time.Duration(config.ReportInterval), &wg); err != nil {
+		if err = mservice.SendLoop(sendLoopCtxWithCancel, time.Duration(config.ReportInterval), &wg); err != nil {
 			log.Fatal(err)
 		}
 	}()
-	go mservice.RetrieveLoop(time.Duration(config.PollInterval), &wg)
-	go mservice.AdditionalRetrieveLoop(time.Duration(config.PollInterval), &wg)
 
-	if err = http.ListenAndServe(":9000", nil); err != nil {
-		log.Fatal(err)
-	}
+	retrieveLoopCtxWithCancel, cancelRetrieveLoop := context.WithCancel(context.Background())
+	go mservice.RetrieveLoop(retrieveLoopCtxWithCancel, time.Duration(config.PollInterval), &wg)
+
+	addRetrieveLoopCtxWithCancel, cancelAddRetrieveLoop := context.WithCancel(context.Background())
+	go mservice.AdditionalRetrieveLoop(addRetrieveLoopCtxWithCancel, time.Duration(config.PollInterval), &wg)
+
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+
+	go func() {
+		s := <-signals
+		log.Printf("Got termination signal: %s. Graceful shutdown\n", s)
+
+		cancelRetrieveLoop()
+		cancelAddRetrieveLoop()
+		cancelSendLoop()
+	}()
+
+	startProfiling()
 
 	wg.Wait()
+}
+
+func startProfiling() {
+	go func() {
+		if err := http.ListenAndServe(":9000", nil); err != nil {
+			log.Fatal(err)
+		}
+	}()
 }

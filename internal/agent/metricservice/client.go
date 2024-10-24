@@ -2,6 +2,7 @@ package metricservice
 
 import (
 	"bytes"
+	"crypto/rsa"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -16,8 +17,10 @@ type Client struct {
 	url               string
 	encryptionKey     string
 	maxRequestRetries int
+	publicKey         *rsa.PublicKey
 }
 
+// SendMetricsChunk sends chunk of metrics, id is number of chunk
 func (c *Client) SendMetricsChunk(id int, chunk []MetricRequest) error {
 	var err error
 
@@ -33,7 +36,7 @@ func (c *Client) SendMetricsChunk(id int, chunk []MetricRequest) error {
 		c.maxRequestRetries,
 		func() (*any, error) {
 			// nolint:staticcheck
-			err = c.doSend(bytes.NewBuffer(data))
+			err = c.doSend(bytes.NewBuffer(data)) // nil
 			return nil, err
 		}, isRetriableError)
 
@@ -55,8 +58,8 @@ func (c *Client) doSend(data *bytes.Buffer) error {
 	if c.encryptionKey != "" {
 		// вычисляем хеш и передаем в HTTP-заголовке запроса с именем HashSHA256
 		hash := security.CreateSign(data.String(), c.encryptionKey)
-		log.Println(data.String(), string(hash))
-		req.Header.Set("HashSHA256", string(hash))
+		log.Println(data.String(), hash)
+		req.Header.Set("HashSHA256", hash)
 	}
 
 	resp, err := c.client.Do(req)

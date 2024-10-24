@@ -4,11 +4,15 @@ package api
 import (
 	"bytes"
 	"crypto/hmac"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha512"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"strconv"
+	"sync"
 
 	"github.com/adettelle/go-metric-collector/internal/db"
 	"github.com/adettelle/go-metric-collector/internal/security"
@@ -33,22 +37,33 @@ type Storager interface {
 // MetricHandlers contains dependencies for handling HTTP requests related
 // to metrics, including a storage mechanism and configuration.
 type MetricHandlers struct {
-	Storager Storager
-	Config   *config.Config
-	DBCon    db.DBConnector // new
+	Storager   Storager
+	Config     *config.Config
+	DBCon      db.DBConnector // new
+	Finalizing bool           // true означает, что надо делать graceful shutdowm
+	Wg         *sync.WaitGroup
 }
 
-func NewMetricHandlers(storager Storager, config *config.Config) *MetricHandlers {
+func NewMetricHandlers(storager Storager, config *config.Config, wg *sync.WaitGroup) *MetricHandlers {
 	return &MetricHandlers{
 		Storager: storager,
 		Config:   config,
 		DBCon:    db.NewDBConnection(config.DBParams),
+		Wg:       wg,
 	}
 }
 
 // MetricUpdate handles HTTP requests to update a metric,
 // accepting a JSON object in the request body.
 func (mh *MetricHandlers) MetricUpdate(w http.ResponseWriter, r *http.Request) {
+	if mh.Finalizing {
+		w.WriteHeader(http.StatusTeapot)
+		return
+	}
+
+	mh.Wg.Add(1)
+	defer mh.Wg.Done()
+
 	var err error
 	var ok bool
 
@@ -339,6 +354,14 @@ func (mh *MetricHandlers) CheckConnectionToDB(w http.ResponseWriter, r *http.Req
 // MetricsUpdate processes an HTTP POST request that contains a batch of
 // metrics ([]Metrics) in JSON format.
 func (mh *MetricHandlers) MetricsUpdate(w http.ResponseWriter, r *http.Request) {
+	if mh.Finalizing {
+		w.WriteHeader(http.StatusTeapot)
+		return
+	}
+
+	mh.Wg.Add(1)
+	defer mh.Wg.Done()
+
 	var err error
 	var ok bool
 
@@ -357,7 +380,6 @@ func (mh *MetricHandlers) MetricsUpdate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// log.Println("mh.Config.Key:", mh.Config.Key)
 	if mh.Config.Key != "" {
 		// вычисляем хеш и сравниваем в HTTP-заголовке запроса с именем HashSHA256
 		hash := security.CreateSign(buf.String(), mh.Config.Key)
@@ -370,7 +392,7 @@ func (mh *MetricHandlers) MetricsUpdate(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// десериализуем JSON в Metrric
-	if err = json.Unmarshal(buf.Bytes(), &Metrics); err != nil {
+	if err = json.Unmarshal(buf.Bytes(), &Metrics); err != nil { //  decryptedBody
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -429,4 +451,14 @@ func (mh *MetricHandlers) MetricsUpdate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	w.WriteHeader(http.StatusOK)
+}
+
+// DecryptWithPrivateKey decrypts data with private key
+func DecryptWithPrivateKey(ciphertext []byte, priv *rsa.PrivateKey) ([]byte, error) {
+	hash := sha512.New()
+	plaintext, err := rsa.DecryptOAEP(hash, rand.Reader, priv, ciphertext, nil)
+	if err != nil {
+		return nil, err
+	}
+	return plaintext, nil
 }

@@ -51,9 +51,7 @@ func ReadMetricsSnapshot(fileName string) (*MemStorage, error) {
 	defer jsonFile.Close()
 
 	logger := zap.Must(zap.NewDevelopment())
-	// if err != nil {
-	// 	panic("cannot initialize zap")
-	// }
+
 	defer logger.Sync()
 	logger.Info("reading from to file", zap.String("fileName", fileName))
 	log.Printf("reading from file: %s", fileName)
