@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -69,16 +70,19 @@ func main() {
 	var wg sync.WaitGroup
 	wg.Add(3)
 
-	sendLoopTerm := make(chan struct{})
+	sendLoopCtxWithCancel, cancelSendLoop := context.WithCancel(context.Background())
+
 	go func() {
-		if err = mservice.SendLoop(time.Duration(config.ReportInterval), &wg, sendLoopTerm); err != nil {
+		if err = mservice.SendLoop(sendLoopCtxWithCancel, time.Duration(config.ReportInterval), &wg); err != nil {
 			log.Fatal(err)
 		}
 	}()
-	retrievLoopTerm := make(chan struct{})
-	go mservice.RetrieveLoop(time.Duration(config.PollInterval), &wg, retrievLoopTerm)
-	additionalRetrieveLoopTerm := make(chan struct{})
-	go mservice.AdditionalRetrieveLoop(time.Duration(config.PollInterval), &wg, additionalRetrieveLoopTerm)
+
+	retrieveLoopCtxWithCancel, cancelRetrieveLoop := context.WithCancel(context.Background())
+	go mservice.RetrieveLoop(retrieveLoopCtxWithCancel, time.Duration(config.PollInterval), &wg)
+
+	addRetrieveLoopCtxWithCancel, cancelAddRetrieveLoop := context.WithCancel(context.Background())
+	go mservice.AdditionalRetrieveLoop(addRetrieveLoopCtxWithCancel, time.Duration(config.PollInterval), &wg)
 
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
@@ -86,9 +90,10 @@ func main() {
 	go func() {
 		s := <-signals
 		log.Printf("Got termination signal: %s. Graceful shutdown\n", s)
-		retrievLoopTerm <- struct{}{}
-		additionalRetrieveLoopTerm <- struct{}{}
-		sendLoopTerm <- struct{}{}
+
+		cancelRetrieveLoop()
+		cancelAddRetrieveLoop()
+		cancelSendLoop()
 	}()
 
 	go func() {
