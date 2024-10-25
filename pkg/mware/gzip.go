@@ -15,7 +15,8 @@ import (
 )
 
 // GzipMiddleware wraps an http.HandlerFunc to add gzip compression and decompression functionality.
-// It compresses responses and decompresses requests based on the client's `Accept-Encoding` and `Content-Encoding` headers.
+// It compresses responses and decompresses requests
+// based on the client's `Accept-Encoding` and `Content-Encoding` headers.
 func GzipMiddleware(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 

@@ -71,13 +71,11 @@ func (ms *MetricService) SendLoop(ctx context.Context, delay time.Duration, wg *
 		}
 	}()
 
-outer:
 	for {
 		select {
 		case <-ctx.Done(): // <-term:
 			log.Println("Stopping SendLoop")
-			break outer
-			// return ms.finalizeSendLoop(chunks)
+			return ms.finalizeSendLoop(chunks)
 		case <-ticker.C:
 			log.Println("Sending metrics")
 			metrics, err := ms.collectAllMetrics()
@@ -91,21 +89,8 @@ outer:
 			ms.metricAccumulator.Reset()
 		}
 	}
-	log.Println("Sending final metrics")
-	metrics, err := ms.collectAllMetrics()
-	if err != nil {
-		return err
-	}
-	err = ms.sendMultipleMetrics(metrics, chunks)
-	if err != nil {
-		return err // паника после 3ей попытки или в случае не IsRetriableErr
-	}
-	ms.metricAccumulator.Reset()
-
-	return nil
 }
 
-/*
 func (ms *MetricService) finalizeSendLoop(chunks chan []MetricRequest) error {
 	log.Println("Sending final metrics")
 	metrics, err := ms.collectAllMetrics()
@@ -119,7 +104,6 @@ func (ms *MetricService) finalizeSendLoop(chunks chan []MetricRequest) error {
 	ms.metricAccumulator.Reset()
 	return nil
 }
-*/
 
 // worker is our worker, which accepts two channels:
 // jobs - task channel, it is the input data to be processed (входные данные для обработки)
@@ -142,12 +126,11 @@ func (ms *MetricService) RetrieveLoop(ctx context.Context, delay time.Duration, 
 	defer wg.Done()
 	ticker := time.NewTicker(time.Second * delay)
 
-outer:
 	for {
 		select {
 		case <-ctx.Done():
 			log.Println("Stopping RetrieveLoop")
-			break outer // return
+			return
 		case <-ticker.C:
 			log.Println("Retrieving metrics")
 			RetrieveAllMetrics(ms.metricAccumulator)
@@ -160,12 +143,11 @@ func (ms *MetricService) AdditionalRetrieveLoop(ctx context.Context, delay time.
 	defer wg.Done()
 	ticker := time.NewTicker(time.Second * delay)
 
-outer:
 	for {
 		select {
 		case <-ctx.Done():
 			log.Println("Stopping AdditionalRetrieveLoop")
-			break outer // return
+			return
 		case <-ticker.C:
 			log.Println("Retrieving additional metrics")
 			retrieveAdditionalGaugeMetrics(ms.metricAccumulator)

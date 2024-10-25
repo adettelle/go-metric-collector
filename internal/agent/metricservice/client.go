@@ -2,7 +2,6 @@ package metricservice
 
 import (
 	"bytes"
-	"crypto/rsa"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -17,7 +16,7 @@ type Client struct {
 	url               string
 	encryptionKey     string
 	maxRequestRetries int
-	publicKey         *rsa.PublicKey
+	// publicKey         *rsa.PublicKey
 }
 
 // SendMetricsChunk sends chunk of metrics, id is number of chunk
@@ -36,7 +35,7 @@ func (c *Client) SendMetricsChunk(id int, chunk []MetricRequest) error {
 		c.maxRequestRetries,
 		func() (*any, error) {
 			// nolint:staticcheck
-			err = c.doSend(bytes.NewBuffer(data)) // nil
+			err = c.doSend(bytes.NewBuffer(data))
 			return nil, err
 		}, isRetriableError)
 
@@ -61,6 +60,10 @@ func (c *Client) doSend(data *bytes.Buffer) error {
 		log.Println(data.String(), hash)
 		req.Header.Set("HashSHA256", hash)
 	}
+
+	netAddr := "127.0.0.1"
+
+	req.Header.Set("X-Real-IP", netAddr)
 
 	resp, err := c.client.Do(req)
 	if err != nil {
