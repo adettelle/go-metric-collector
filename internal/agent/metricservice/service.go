@@ -2,6 +2,7 @@
 package metricservice
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -28,14 +29,16 @@ func NewMetricService(
 	metricAccumulator *m.MetricAccumulator,
 	client *http.Client,
 	chunkSize int,
+	// publicKey *rsa.PublicKey,
 ) *MetricService {
 	return &MetricService{
 		metricAccumulator: metricAccumulator,
 		client: &Client{
 			client:            client,
-			url:               fmt.Sprintf("http://%s/updates/", config.Address),
+			url:               fmt.Sprintf("https://%s/updates/", config.Address),
 			maxRequestRetries: config.MaxRequestRetries,
 			encryptionKey:     config.Key,
+			// publicKey:         publicKey,
 		},
 		rateLimit: config.RateLimit,
 		ChunkSize: chunkSize,
@@ -50,7 +53,7 @@ type MetricRequest struct {
 }
 
 // SendLoop sends all metrics to the server (MemStorage) with delay
-func (ms *MetricService) SendLoop(delay time.Duration, wg *sync.WaitGroup) error {
+func (ms *MetricService) SendLoop(ctx context.Context, delay time.Duration, wg *sync.WaitGroup) error { // , term <-chan struct{}
 	defer wg.Done()
 	ticker := time.NewTicker(time.Second * delay)
 
@@ -60,24 +63,45 @@ func (ms *MetricService) SendLoop(delay time.Duration, wg *sync.WaitGroup) error
 		go ms.StartWorker(i, chunks, results)
 	}
 
+	// в горутине вычитываем из канала results
+	// (туда записывается успешная или неуспешная отправка чанка), освобождая его
 	go func() {
 		for res := range results {
-			log.Printf("FIXME: chunk sent result %t", res)
+			log.Printf("chunk sent result %t", res)
 		}
 	}()
 
-	for range ticker.C {
-		log.Println("Sending metrics")
-		metrics, err := ms.collectAllMetrics()
-		if err != nil {
-			return err
+	for {
+		select {
+		case <-ctx.Done(): // <-term:
+			log.Println("Stopping SendLoop")
+			return ms.finalizeSendLoop(chunks)
+		case <-ticker.C:
+			log.Println("Sending metrics")
+			metrics, err := ms.collectAllMetrics()
+			if err != nil {
+				return err
+			}
+			err = ms.sendMultipleMetrics(metrics, chunks)
+			if err != nil {
+				return err // паника после 3ей попытки или в случае не IsRetriableErr
+			}
+			ms.metricAccumulator.Reset()
 		}
-		err = ms.sendMultipleMetrics(metrics, chunks)
-		if err != nil {
-			return err // паника после 3ей попытки или в случае не IsRetriableErr
-		}
-		ms.metricAccumulator.Reset()
 	}
+}
+
+func (ms *MetricService) finalizeSendLoop(chunks chan []MetricRequest) error {
+	log.Println("Sending final metrics")
+	metrics, err := ms.collectAllMetrics()
+	if err != nil {
+		return err
+	}
+	err = ms.sendMultipleMetrics(metrics, chunks)
+	if err != nil {
+		return err // паника после 3ей попытки или в случае не IsRetriableErr
+	}
+	ms.metricAccumulator.Reset()
 	return nil
 }
 
@@ -87,7 +111,7 @@ func (ms *MetricService) SendLoop(delay time.Duration, wg *sync.WaitGroup) error
 func (ms *MetricService) StartWorker(id int, chunks <-chan []MetricRequest, results chan<- bool) {
 	// worker:
 	for chunk := range chunks {
-		err := ms.client.SendMetricsChunk(id, chunk)
+		err := ms.client.SendMetricsChunk(id, chunk) // SendMetricsChunkEncrypted
 		if err != nil {
 			results <- false
 		} else {
@@ -97,24 +121,37 @@ func (ms *MetricService) StartWorker(id int, chunks <-chan []MetricRequest, resu
 }
 
 // RetrieveLoop collects all metrics from MemStorage.
-func (ms *MetricService) RetrieveLoop(delay time.Duration, wg *sync.WaitGroup) {
+// term - канал финилизации
+func (ms *MetricService) RetrieveLoop(ctx context.Context, delay time.Duration, wg *sync.WaitGroup) { // , term <-chan struct{}
 	defer wg.Done()
 	ticker := time.NewTicker(time.Second * delay)
 
-	for range ticker.C {
-		log.Println("Retrieving metrics")
-		RetrieveAllMetrics(ms.metricAccumulator)
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("Stopping RetrieveLoop")
+			return
+		case <-ticker.C:
+			log.Println("Retrieving metrics")
+			RetrieveAllMetrics(ms.metricAccumulator)
+		}
 	}
 }
 
 // AdditionalRetrieveLoop gets aditional metrics from MemStorage to the server with delay.
-func (ms *MetricService) AdditionalRetrieveLoop(delay time.Duration, wg *sync.WaitGroup) {
+func (ms *MetricService) AdditionalRetrieveLoop(ctx context.Context, delay time.Duration, wg *sync.WaitGroup) { // , term <-chan struct{}
 	defer wg.Done()
 	ticker := time.NewTicker(time.Second * delay)
 
-	for range ticker.C {
-		log.Println("Retrieving additional metrics")
-		retrieveAdditionalGaugeMetrics(ms.metricAccumulator)
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("Stopping AdditionalRetrieveLoop")
+			return
+		case <-ticker.C:
+			log.Println("Retrieving additional metrics")
+			retrieveAdditionalGaugeMetrics(ms.metricAccumulator)
+		}
 	}
 }
 

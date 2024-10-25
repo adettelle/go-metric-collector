@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/adettelle/go-metric-collector/internal/mocks"
@@ -49,9 +50,11 @@ func CreateMetricHandlers(t *testing.T) (*MetricHandlers, func()) {
 	// создаём объект-заглушку
 	m := mocks.NewMockStorager(ctrl)
 
+	var wg sync.WaitGroup
 	mh := &MetricHandlers{
 		Storager: m,
 		Config:   nil,
+		Wg:       &wg,
 	}
 	return mh, ctrl.Finish
 }
