@@ -28,6 +28,7 @@ type Config struct {
 	StoragePath   string `json:"store_file"`     // по умолчанию /tmp/metrics-db.json
 	CryptoKey     string `json:"crypto_key"`     // путь до приватного ключа асимметричного шифрования
 	Cert          string `json:"cert"`           // путь до сертификата шифрования
+	TrustedSubnet string `json:"trusted_subnet"` // строковое представление бесклассовой адресации (CIDR)
 	StoreInterval int    `json:"store_interval"` // по умолчанию 300 сек
 	Restore       bool   `json:"restore"`        // по умолчанию true
 }
@@ -46,6 +47,7 @@ func New() (*Config, error) {
 	flagCryptoKey := flag.String("crypto-key", "", "path to file with private key")
 	flagCert := flag.String("cert", "", "path to file with certificate")
 	flagConfig := flag.String("config", "", "path to file with config parametrs")
+	flagTrustedSubnet := flag.String("t", "", "classless inter-domain routing")
 
 	flag.Parse()
 
@@ -59,6 +61,7 @@ func New() (*Config, error) {
 		CryptoKey:     getCryptoKey(flagCryptoKey),
 		Cert:          getCert(flagCert),
 		Config:        getConfig(flagConfig),
+		TrustedSubnet: getTrustedSubnet(flagTrustedSubnet),
 	}
 
 	if cfg.Config != "" {
@@ -116,6 +119,14 @@ func getConfig(flagConfig *string) string {
 		return config
 	}
 	return *flagConfig
+}
+
+func getTrustedSubnet(flagTrustedSubnet *string) string {
+	trustedSubnet := os.Getenv("TRUSTED_SUBNET")
+	if trustedSubnet != "" {
+		return trustedSubnet
+	}
+	return *flagTrustedSubnet
 }
 
 func getKey(flagKey *string) string {
@@ -224,7 +235,6 @@ func parseIntOrPanic(s string) int {
 }
 
 func (config *Config) ShouldRestore() bool {
-
 	if !config.Restore {
 		return false
 	}
