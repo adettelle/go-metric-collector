@@ -48,12 +48,22 @@ func main() {
 
 	var wg sync.WaitGroup
 	mAPI := api.NewMetricHandlers(storager, cfg, &wg)
+	router := api.NewMetricRouter(storager, mAPI)
+	srv := &http.Server{
+		Addr:    cfg.Address,
+		Handler: router,
+	}
 	go func() {
 		fmt.Printf("Starting server on %s\n", cfg.Address)
-		router := api.NewMetricRouter(storager, mAPI)
-		if err = http.ListenAndServeTLS(cfg.Address, cfg.Cert, cfg.CryptoKey, router); err != nil {
+
+		err := srv.ListenAndServeTLS(cfg.Cert, cfg.CryptoKey)
+		if err != http.ErrServerClosed {
 			log.Fatal(err)
 		}
+
+		// if err = http.ListenAndServeTLS(cfg.Address, cfg.Cert, cfg.CryptoKey, router); err != nil {
+		// 	log.Fatal(err)
+		// }
 	}()
 
 	c := make(chan os.Signal, 1)
@@ -64,6 +74,11 @@ func main() {
 	go func() {
 		s := <-c
 		log.Printf("Got termination signal: %s. Graceful shutdown", s)
+
+		if err := srv.Shutdown(context.Background()); err != nil {
+			log.Fatal(err) // failure/timeout shutting down the server gracefully
+		}
+
 		mAPI.Finalizing = true
 
 		err = storager.Finalize()
