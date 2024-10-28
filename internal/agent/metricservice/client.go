@@ -13,7 +13,7 @@ import (
 
 type HTTPSender struct {
 	Client            *http.Client
-	Url               string
+	URL               string
 	EncryptionKey     string
 	MaxRequestRetries int
 	// publicKey         *rsa.PublicKey
@@ -22,7 +22,7 @@ type HTTPSender struct {
 func NewHTTPSender(client *http.Client, url string, maxRequestRetries int, encryptionKey string) *HTTPSender {
 	return &HTTPSender{
 		Client:            client,
-		Url:               url,
+		URL:               url,
 		MaxRequestRetries: maxRequestRetries,
 		EncryptionKey:     encryptionKey,
 	}
@@ -58,7 +58,7 @@ func (c *HTTPSender) SendMetricsChunk(id int, chunk []MetricRequest) error {
 }
 
 func (c *HTTPSender) doSend(data *bytes.Buffer) error {
-	req, err := http.NewRequest(http.MethodPost, c.Url, data)
+	req, err := http.NewRequest(http.MethodPost, c.URL, data)
 	if err != nil {
 		return err
 	}

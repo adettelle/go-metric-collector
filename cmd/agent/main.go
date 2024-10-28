@@ -65,12 +65,12 @@ func main() {
 		},
 	}
 
-	grpcUrl := config.GrpcUrl
+	grpcURL := config.GrpcURL
 	var mservice *metricservice.MetricService
 	var sender metricservice.MetricSender
 
-	if grpcUrl != "" {
-		sender = metricservice.NewGrpcSender(grpcUrl)
+	if grpcURL != "" {
+		sender = metricservice.NewGrpcSender(grpcURL)
 	} else {
 		sender = metricservice.NewHTTPSender(client, fmt.Sprintf("https://%s/updates/", config.Address), config.MaxRequestRetries, config.Key)
 	}

@@ -26,7 +26,7 @@ type Config struct {
 	ClientCert        string `envconfig:"CLIENT_CERT" flag:"client-cert" json:"client_cert"` // путь до сертификата клиента
 	ServerCert        string `envconfig:"SERVER_CERT" flag:"server-cert" json:"server_cert"` // путь до сертификата сервера
 	Config            string `envconfig:"CONFIG" flag:"config"`                              // путь до json файла конфигурации
-	GrpcUrl           string `envconfig:"GRPC" flag:"grpc"`                                  // адрес и порт grpc сервера (если указан, отправляем метрики по grpc, в противном случае - по http)
+	GrpcURL           string `envconfig:"GRPC" flag:"grpc"`                                  // адрес и порт grpc сервера (если указан, отправляем метрики по grpc, в противном случае - по http)
 	MaxRequestRetries int    // максимальное количество попыток запроса
 	PollInterval      int    `envconfig:"POLL_INTERVAL" flag:"p" json:"poll_interval"`     // по умолчанию 2 сек
 	ReportInterval    int    `envconfig:"REPORT_INTERVAL" flag:"r" json:"report_interval"` // по умолчанию 10 сек
@@ -50,7 +50,7 @@ func New() (*Config, error) {
 	flag.StringVar(&cfg.CryptoKey, "crypto-key", cfg.CryptoKey, "path to file with public key")
 	flag.StringVar(&cfg.ClientCert, "client-cert", cfg.ClientCert, "path to client sertificate")
 	flag.StringVar(&cfg.ServerCert, "server-cert", cfg.ServerCert, "path to server sertificate")
-	flag.StringVar(&cfg.GrpcUrl, "grpc", cfg.GrpcUrl, "grpc server url")
+	flag.StringVar(&cfg.GrpcURL, "grpc", cfg.GrpcURL, "grpc server url")
 
 	flag.Parse()
 
