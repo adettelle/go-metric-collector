@@ -38,7 +38,7 @@ func (ms *MServer) UpdateMetrics(ctx context.Context, in *pb.UpdateMetricsReques
 
 		default:
 			resp.Error = "No such metric"
-			return &resp, fmt.Errorf(resp.Error)
+			return &resp, fmt.Errorf("err %v", resp.Error)
 		}
 	}
 

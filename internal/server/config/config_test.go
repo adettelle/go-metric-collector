@@ -18,6 +18,7 @@ func TestDefaultConfig(t *testing.T) {
 		Restore:       true,
 		DBParams:      "host=localhost port=5433 user=postgres password=password dbname=metrics-test sslmode=disable",
 		Key:           "",
+		GrpcPort:      "3200",
 	}, cfg)
 }
 
