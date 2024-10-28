@@ -4,7 +4,6 @@ package metricservice
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -19,29 +18,27 @@ import (
 // MetricService structure receives and sends out metrics, runs its loops (Loop)
 type MetricService struct {
 	metricAccumulator *m.MetricAccumulator
-	client            *Client
+	sender            MetricSender //*Client
 	rateLimit         int
 	ChunkSize         int
+}
+
+type MetricSender interface {
+	SendMetricsChunk(id int, chunk []MetricRequest) error
 }
 
 func NewMetricService(
 	config *config.Config,
 	metricAccumulator *m.MetricAccumulator,
-	client *http.Client,
+	sender MetricSender, // *http.Client, теперь здесь передается не конкртеный клиент, а интерфейс
 	chunkSize int,
 	// publicKey *rsa.PublicKey,
 ) *MetricService {
 	return &MetricService{
 		metricAccumulator: metricAccumulator,
-		client: &Client{
-			client:            client,
-			url:               fmt.Sprintf("https://%s/updates/", config.Address),
-			maxRequestRetries: config.MaxRequestRetries,
-			encryptionKey:     config.Key,
-			// publicKey:         publicKey,
-		},
-		rateLimit: config.RateLimit,
-		ChunkSize: chunkSize,
+		sender:            sender,
+		rateLimit:         config.RateLimit,
+		ChunkSize:         chunkSize,
 	}
 }
 
@@ -111,7 +108,7 @@ func (ms *MetricService) finalizeSendLoop(chunks chan []MetricRequest) error {
 func (ms *MetricService) StartWorker(id int, chunks <-chan []MetricRequest, results chan<- bool) {
 	// worker:
 	for chunk := range chunks {
-		err := ms.client.SendMetricsChunk(id, chunk) // SendMetricsChunkEncrypted
+		err := ms.sender.SendMetricsChunk(id, chunk) // SendMetricsChunkEncrypted
 		if err != nil {
 			results <- false
 		} else {

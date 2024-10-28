@@ -14,6 +14,7 @@ import (
 
 	"github.com/adettelle/go-metric-collector/internal/api"
 	database "github.com/adettelle/go-metric-collector/internal/db"
+	"github.com/adettelle/go-metric-collector/internal/grpcserver"
 	"github.com/adettelle/go-metric-collector/internal/migrator"
 
 	"github.com/adettelle/go-metric-collector/internal/server/config"
@@ -60,10 +61,13 @@ func main() {
 		if err != http.ErrServerClosed {
 			log.Fatal(err)
 		}
+	}()
 
-		// if err = http.ListenAndServeTLS(cfg.Address, cfg.Cert, cfg.CryptoKey, router); err != nil {
-		// 	log.Fatal(err)
-		// }
+	go func() {
+		err := grpcserver.StartServer(storager, cfg.GrpcPort)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}()
 
 	c := make(chan os.Signal, 1)

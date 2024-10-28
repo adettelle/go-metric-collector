@@ -29,6 +29,7 @@ type Config struct {
 	CryptoKey     string `json:"crypto_key"`     // путь до приватного ключа асимметричного шифрования
 	Cert          string `json:"cert"`           // путь до сертификата шифрования
 	TrustedSubnet string `json:"trusted_subnet"` // строковое представление бесклассовой адресации (CIDR)
+	GrpcPort      string `json:"grpc_port"`      // порт, на котором старует grpc сервер
 	StoreInterval int    `json:"store_interval"` // по умолчанию 300 сек
 	Restore       bool   `json:"restore"`        // по умолчанию true
 }
@@ -48,6 +49,7 @@ func New() (*Config, error) {
 	flagCert := flag.String("cert", "", "path to file with certificate")
 	flagConfig := flag.String("config", "", "path to file with config parametrs")
 	flagTrustedSubnet := flag.String("t", "", "classless inter-domain routing")
+	flagGrpcPort := flag.String("grpcport", "3200", "grpc server port")
 
 	flag.Parse()
 
@@ -62,6 +64,7 @@ func New() (*Config, error) {
 		Cert:          getCert(flagCert),
 		Config:        getConfig(flagConfig),
 		TrustedSubnet: getTrustedSubnet(flagTrustedSubnet),
+		GrpcPort:      getGrpcPort(flagGrpcPort),
 	}
 
 	if cfg.Config != "" {
@@ -119,6 +122,14 @@ func getConfig(flagConfig *string) string {
 		return config
 	}
 	return *flagConfig
+}
+
+func getGrpcPort(flagGrpcPort *string) string {
+	grpcPort := os.Getenv("GRPCPORT")
+	if grpcPort != "" {
+		return grpcPort
+	}
+	return *flagGrpcPort
 }
 
 func getTrustedSubnet(flagTrustedSubnet *string) string {

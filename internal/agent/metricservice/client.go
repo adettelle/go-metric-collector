@@ -11,16 +11,25 @@ import (
 	"github.com/adettelle/go-metric-collector/pkg/retries"
 )
 
-type Client struct {
-	client            *http.Client
-	url               string
-	encryptionKey     string
-	maxRequestRetries int
+type HTTPSender struct {
+	Client            *http.Client
+	Url               string
+	EncryptionKey     string
+	MaxRequestRetries int
 	// publicKey         *rsa.PublicKey
 }
 
+func NewHTTPSender(client *http.Client, url string, maxRequestRetries int, encryptionKey string) *HTTPSender {
+	return &HTTPSender{
+		Client:            client,
+		Url:               url,
+		MaxRequestRetries: maxRequestRetries,
+		EncryptionKey:     encryptionKey,
+	}
+}
+
 // SendMetricsChunk sends chunk of metrics, id is number of chunk
-func (c *Client) SendMetricsChunk(id int, chunk []MetricRequest) error {
+func (c *HTTPSender) SendMetricsChunk(id int, chunk []MetricRequest) error {
 	var err error
 
 	log.Printf("Sending chunk on worker %d\n", id)
@@ -32,7 +41,7 @@ func (c *Client) SendMetricsChunk(id int, chunk []MetricRequest) error {
 	}
 
 	_, err = retries.RunWithRetries("Send metrics request",
-		c.maxRequestRetries,
+		c.MaxRequestRetries,
 		func() (*any, error) {
 			// nolint:staticcheck
 			err = c.doSend(bytes.NewBuffer(data))
@@ -48,15 +57,15 @@ func (c *Client) SendMetricsChunk(id int, chunk []MetricRequest) error {
 	return nil
 }
 
-func (c *Client) doSend(data *bytes.Buffer) error {
-	req, err := http.NewRequest(http.MethodPost, c.url, data)
+func (c *HTTPSender) doSend(data *bytes.Buffer) error {
+	req, err := http.NewRequest(http.MethodPost, c.Url, data)
 	if err != nil {
 		return err
 	}
 
-	if c.encryptionKey != "" {
+	if c.EncryptionKey != "" {
 		// вычисляем хеш и передаем в HTTP-заголовке запроса с именем HashSHA256
-		hash := security.CreateSign(data.String(), c.encryptionKey)
+		hash := security.CreateSign(data.String(), c.EncryptionKey)
 		log.Println(data.String(), hash)
 		req.Header.Set("HashSHA256", hash)
 	}
@@ -65,7 +74,7 @@ func (c *Client) doSend(data *bytes.Buffer) error {
 
 	req.Header.Set("X-Real-IP", netAddr)
 
-	resp, err := c.client.Do(req)
+	resp, err := c.Client.Do(req)
 	if err != nil {
 		return err
 	}

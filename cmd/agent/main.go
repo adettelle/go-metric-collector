@@ -65,7 +65,17 @@ func main() {
 		},
 	}
 
-	mservice := metricservice.NewMetricService(config, metricAccumulator, client, 10)
+	grpcUrl := config.GrpcUrl
+	var mservice *metricservice.MetricService
+	var sender metricservice.MetricSender
+
+	if grpcUrl != "" {
+		sender = metricservice.NewGrpcSender(grpcUrl)
+	} else {
+		sender = metricservice.NewHTTPSender(client, fmt.Sprintf("https://%s/updates/", config.Address), config.MaxRequestRetries, config.Key)
+	}
+
+	mservice = metricservice.NewMetricService(config, metricAccumulator, sender, 10)
 
 	var wg sync.WaitGroup
 	wg.Add(3)
