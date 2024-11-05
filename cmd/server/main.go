@@ -29,22 +29,29 @@ var (
 )
 
 func main() {
+	err := initialize()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func initialize() error {
 	var err error
 
 	fmt.Fprintf(os.Stdout, "Build version: %s\n", buildVersion)
 	fmt.Fprintf(os.Stdout, "Build date: %s\n", buildDate)
 	fmt.Fprintf(os.Stdout, "Build commit: %s\n", buildCommit)
 
-	cfg, err := config.New(false)
+	cfg, err := config.New(false, "")
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	log.Println("config:", cfg)
 
 	storager, err := initStorager(cfg)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	var wg sync.WaitGroup
@@ -94,6 +101,8 @@ func main() {
 		done <- true
 	}()
 	<-done
+
+	return nil
 }
 
 // initStorager not only constructs, but also starts related processes

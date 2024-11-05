@@ -69,13 +69,13 @@ func initFlags() *Config {
 // сначала проверяем флаги и заполняем структуру конфига оттуда
 // потом проверяем переменные окружения и перезаписываем структуру конфига оттуда
 // далее проверяем, если есть json файл и дополняем структкуру конфига оттуда
-func New(ignoreFlags bool) (*Config, error) {
+func New(ignoreFlags bool, jsonPath string) (*Config, error) {
 	var cfg *Config
 
 	if !ignoreFlags {
 		cfg = initFlags()
 	} else {
-		cfg = &Config{}
+		cfg = &Config{Config: jsonPath}
 	}
 
 	if cfg.Config != "" {

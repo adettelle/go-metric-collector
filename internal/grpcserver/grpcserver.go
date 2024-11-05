@@ -12,13 +12,13 @@ import (
 )
 
 // MetricsServer поддерживает все необходимые методы сервера.
-type MServer struct {
+type GRPCMetricServerServer struct {
 	pb.UnimplementedMetricsServer
 	Storager api.Storager
 }
 
 // UpdatesMetric реализует интерфейс обновления метрик.
-func (ms *MServer) UpdateMetrics(ctx context.Context, in *pb.UpdateMetricsRequest) (*pb.UpdateMetricsResponse, error) {
+func (ms *GRPCMetricServerServer) UpdateMetrics(ctx context.Context, in *pb.UpdateMetricsRequest) (*pb.UpdateMetricsResponse, error) {
 	var resp pb.UpdateMetricsResponse
 	log.Println("resieved metrics: ", in.Metrics)
 
@@ -57,7 +57,7 @@ func StartServer(storager api.Storager, port string) error {
 	s := grpc.NewServer()
 
 	// регистрируем сервис
-	pb.RegisterMetricsServer(s, &MServer{Storager: storager})
+	pb.RegisterMetricsServer(s, &GRPCMetricServerServer{Storager: storager})
 	log.Printf("Starting grpc server on port: %s", port)
 
 	// получаем запрос gRPC

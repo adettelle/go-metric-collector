@@ -9,29 +9,26 @@ import (
 )
 
 func TestConfigFromJSON(t *testing.T) {
-	os.Setenv("CONFIG", "./testdata/test.cfg.json")
-	defer os.Setenv("CONFIG", "")
-
-	_, err := New(true)
+	cfg, err := New(true, "./testdata/test.cfg.json")
 	assert.NoError(t, err)
-	// expectedCfg := Config{
-	// 	Address:           "localhost:8080",
-	// 	Key:               "",
-	// 	CryptoKey:         "./keys/client_privatekey.pem",
-	// 	ClientCert:        "./keys/client_cert.pem",
-	// 	ServerCert:        "./keys/server_cert.pem",
-	// 	Config:            "./testdata/test.cfg.json",
-	// 	GrpcURL:           "",
-	// 	MaxRequestRetries: 3,
-	// 	PollInterval:      1,
-	// 	ReportInterval:    10,
-	// 	RateLimit:         1,
-	// }
-	// assert.Equal(t, cfg, &expectedCfg)
+	expectedCfg := Config{
+		Address:       "localhost:8080",
+		DBParams:      "host=localhost port=5433 user=postgres password=password dbname=metrics-test sslmode=disable",
+		Key:           "",
+		Config:        "./testdata/test.cfg.json",
+		StoragePath:   "/tmp/metrics-db.json",
+		CryptoKey:     "./keys/server_privatekey.pem",
+		Cert:          "",
+		TrustedSubnet: "",
+		GrpcPort:      "",
+		StoreInterval: 1,
+		Restore:       true,
+	}
+	assert.Equal(t, cfg, &expectedCfg)
 }
 
 func TestDefaultConfig(t *testing.T) {
-	cfg, err := New(false)
+	cfg, err := New(false, "")
 	require.Nil(t, err)
 
 	require.Equal(t, &Config{
@@ -91,18 +88,3 @@ func TestShouldRestoreFileExists(t *testing.T) {
 
 	require.True(t, cfg.ShouldRestore())
 }
-
-/*
-func TestGetStoragePathInexistent(t *testing.T) {
-	dir := os.TempDir()
-	fileName := uuid.New().String()
-
-	fullName := path.Join(dir, fileName)
-
-	result := getStoragePath(&fullName)
-	require.Equal(t, fullName, result)
-
-	_, err := os.Stat(fullName)
-	require.NoError(t, err)
-}
-*/

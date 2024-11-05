@@ -36,6 +36,14 @@ git fetch template && git checkout template/main .github
 Для запуска локальных тестов с БД необходимо запустить команду 
 `docker-compose  -f ./test.docker-compose.yaml up -d && go test ./...`
 
+Для запуска тестов с покрытием необходимо запустить команду
+```
+go test -v -coverpkg=./... -coverprofile=profile.cov ./... && \
+    cat profile.cov | grep -v ".pb.go" > cover.out && \
+    go tool cover -func cover.out && go tool cover -html cover.out
+```
+    
+
 ## запуск линтера
 
 В проекте используется специализированный multichecker. 

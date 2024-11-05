@@ -29,7 +29,14 @@ var (
 )
 
 func main() {
+	err := initialize()
+	if err != nil {
+		log.Fatal(err)
+	}
 
+}
+
+func initialize() error {
 	var err error
 
 	fmt.Fprintf(os.Stdout, "Build version: %s\n", buildVersion)
@@ -40,12 +47,12 @@ func main() {
 
 	config, err := config.New()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-
+	fmt.Println("server cert: ", config.ServerCert)
 	caCert, err := os.ReadFile(config.ServerCert) // "./keys/server_cert.pem"
 	if err != nil {
-		log.Fatal("error in reading certificate: ", err)
+		return fmt.Errorf("error in reading certificate: %v", err)
 	}
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
@@ -53,7 +60,7 @@ func main() {
 	// "./keys/client_cert.pem", "./keys/client_privatekey.pem"
 	cert, err := tls.LoadX509KeyPair(config.ClientCert, config.CryptoKey)
 	if err != nil {
-		log.Fatal("error in loading key pair: ", err)
+		return fmt.Errorf("error in loading key pair: %v", err)
 	}
 
 	client := &http.Client{
@@ -109,6 +116,8 @@ func main() {
 	startProfiling()
 
 	wg.Wait()
+
+	return nil
 }
 
 func startProfiling() {
