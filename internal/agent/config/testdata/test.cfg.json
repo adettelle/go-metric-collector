@@ -1,0 +1,8 @@
+{
+    "address": "localhost:8080", 
+    "report_interval": 10, 
+    "poll_interval": 1, 
+    "crypto_key": "./keys/client_privatekey.pem",
+    "client_cert": "./keys/client_cert.pem",
+    "server_cert": "./keys/server_cert.pem"
+} 

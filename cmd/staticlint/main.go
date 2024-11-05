@@ -64,6 +64,11 @@ import (
 )
 
 func main() {
+	mychecks := getChecks()
+	multichecker.Main(mychecks...)
+}
+
+func getChecks() []*analysis.Analyzer {
 	mychecks := make([]*analysis.Analyzer, 0, 100)
 	mychecks = append(mychecks,
 		// Analyzers from golang.org/x/tools/go/analysis/passes
@@ -131,6 +136,5 @@ func main() {
 			mychecks = append(mychecks, v.Analyzer)
 		}
 	}
-
-	multichecker.Main(mychecks...)
+	return mychecks
 }

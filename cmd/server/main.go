@@ -14,6 +14,7 @@ import (
 
 	"github.com/adettelle/go-metric-collector/internal/api"
 	database "github.com/adettelle/go-metric-collector/internal/db"
+	"github.com/adettelle/go-metric-collector/internal/grpcserver"
 	"github.com/adettelle/go-metric-collector/internal/migrator"
 
 	"github.com/adettelle/go-metric-collector/internal/server/config"
@@ -28,22 +29,29 @@ var (
 )
 
 func main() {
+	err := initialize()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func initialize() error {
 	var err error
 
 	fmt.Fprintf(os.Stdout, "Build version: %s\n", buildVersion)
 	fmt.Fprintf(os.Stdout, "Build date: %s\n", buildDate)
 	fmt.Fprintf(os.Stdout, "Build commit: %s\n", buildCommit)
 
-	cfg, err := config.New()
+	cfg, err := config.New(false, "")
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	log.Println("config:", cfg)
 
 	storager, err := initStorager(cfg)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	var wg sync.WaitGroup
@@ -60,10 +68,13 @@ func main() {
 		if err != http.ErrServerClosed {
 			log.Fatal(err)
 		}
+	}()
 
-		// if err = http.ListenAndServeTLS(cfg.Address, cfg.Cert, cfg.CryptoKey, router); err != nil {
-		// 	log.Fatal(err)
-		// }
+	go func() {
+		err := grpcserver.StartServer(storager, cfg.GrpcPort)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}()
 
 	c := make(chan os.Signal, 1)
@@ -90,6 +101,8 @@ func main() {
 		done <- true
 	}()
 	<-done
+
+	return nil
 }
 
 // initStorager not only constructs, but also starts related processes
