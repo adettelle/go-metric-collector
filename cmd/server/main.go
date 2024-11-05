@@ -35,7 +35,7 @@ func main() {
 	fmt.Fprintf(os.Stdout, "Build date: %s\n", buildDate)
 	fmt.Fprintf(os.Stdout, "Build commit: %s\n", buildCommit)
 
-	cfg, err := config.New()
+	cfg, err := config.New(false)
 	if err != nil {
 		log.Fatal(err)
 	}

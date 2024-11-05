@@ -1,13 +1,73 @@
 package metricservice
 
 import (
+	"context"
+	"sync"
 	"testing"
+	"time"
 
+	"github.com/adettelle/go-metric-collector/internal/agent/config"
 	m "github.com/adettelle/go-metric-collector/internal/agent/metrics"
 	"github.com/adettelle/go-metric-collector/pkg/collections"
 
 	"github.com/stretchr/testify/assert"
 )
+
+type MockMetricSender struct {
+}
+
+func (mms *MockMetricSender) SendMetricsChunk(id int, chunk []MetricRequest) error {
+	return nil
+}
+
+func TestSendLoop(t *testing.T) {
+	cfg := &config.Config{}
+
+	ma := m.New()
+	var wg sync.WaitGroup
+	wg.Add(1)
+	ms := NewMetricService(cfg, ma, &MockMetricSender{}, 10)
+	ctx, cancel := context.WithCancel(context.Background())
+	go ms.SendLoop(ctx, 1, &wg)
+	defer cancel()
+
+	time.Sleep(2 * time.Second)
+	// TODO create mock MetricSender and check
+}
+
+func TestRetrieveLoop(t *testing.T) {
+	cfg := &config.Config{}
+
+	ma := m.New()
+	var wg sync.WaitGroup
+	wg.Add(1)
+	ms := NewMetricService(cfg, ma, &MockMetricSender{}, 10)
+	ctx, cancel := context.WithCancel(context.Background())
+	go ms.RetrieveLoop(ctx, 1, &wg)
+	defer cancel()
+
+	time.Sleep(2 * time.Second)
+
+	assert.NotEmpty(t, ma.GetAllGaugeMetrics())
+	assert.NotEmpty(t, ma.GetAllCounterMetrics())
+}
+
+func TestAdditionalRetrieveLoop(t *testing.T) {
+	cfg := &config.Config{}
+
+	ma := m.New()
+	var wg sync.WaitGroup
+	wg.Add(1)
+	ms := NewMetricService(cfg, ma, &MockMetricSender{}, 10)
+	ctx, cancel := context.WithCancel(context.Background())
+	go ms.AdditionalRetrieveLoop(ctx, 1, &wg)
+	defer cancel()
+
+	time.Sleep(2 * time.Second)
+
+	assert.NotEmpty(t, ma.GetAllGaugeMetrics())
+	assert.Empty(t, ma.GetAllCounterMetrics())
+}
 
 func TestCollectAllMetrics(t *testing.T) {
 	ma := m.New()

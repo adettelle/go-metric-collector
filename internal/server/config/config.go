@@ -34,11 +34,7 @@ type Config struct {
 	Restore       bool   `json:"restore"`        // по умолчанию true
 }
 
-// приоритет:
-// сначала проверяем флаги и заполняем структуру конфига оттуда
-// потом проверяем переменные окружения и перезаписываем структуру конфига оттуда
-// далее проверяем, если есть json файл и дополняем структкуру конфига оттуда
-func New() (*Config, error) {
+func initFlags() *Config {
 	flagAddr := flag.String("a", "", "Net address localhost:port")                   // "localhost:8080"
 	flagStoreInterval := flag.Int("i", 0, "store metrics to file interval, seconds") // 300
 	flagStoragePath := flag.String("f", "", "file storage path")
@@ -65,6 +61,21 @@ func New() (*Config, error) {
 		Config:        getConfig(flagConfig),
 		TrustedSubnet: getTrustedSubnet(flagTrustedSubnet),
 		GrpcPort:      getGrpcPort(flagGrpcPort),
+	}
+	return &cfg
+}
+
+// приоритет:
+// сначала проверяем флаги и заполняем структуру конфига оттуда
+// потом проверяем переменные окружения и перезаписываем структуру конфига оттуда
+// далее проверяем, если есть json файл и дополняем структкуру конфига оттуда
+func New(ignoreFlags bool) (*Config, error) {
+	var cfg *Config
+
+	if !ignoreFlags {
+		cfg = initFlags()
+	} else {
+		cfg = &Config{}
 	}
 
 	if cfg.Config != "" {
@@ -113,7 +124,7 @@ func New() (*Config, error) {
 	}
 
 	log.Printf("config: %+v\n", cfg)
-	return &cfg, nil
+	return cfg, nil
 }
 
 func getConfig(flagConfig *string) string {

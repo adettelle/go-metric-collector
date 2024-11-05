@@ -6,13 +6,12 @@ import (
 	"os"
 )
 
-func ReadCfgJSON[T any](path string) (cfg *T, err error) { // *Config
+func ReadCfgJSON[T any](path string) (cfg *T, err error) {
 	file, err := os.OpenFile(path, os.O_RDONLY, 0444) // "./agent.example.cfg.json"
 	if err != nil {
 		return nil, err
 	}
 
-	// var cfg Config
 	x, err := io.ReadAll(file)
 	if err != nil {
 		return nil, err
