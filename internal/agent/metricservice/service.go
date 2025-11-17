@@ -4,7 +4,6 @@ package metricservice
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -19,29 +18,27 @@ import (
 // MetricService structure receives and sends out metrics, runs its loops (Loop)
 type MetricService struct {
 	metricAccumulator *m.MetricAccumulator
-	client            *Client
+	sender            MetricSender //*Client
 	rateLimit         int
 	ChunkSize         int
+}
+
+type MetricSender interface {
+	SendMetricsChunk(id int, chunk []MetricRequest) error
 }
 
 func NewMetricService(
 	config *config.Config,
 	metricAccumulator *m.MetricAccumulator,
-	client *http.Client,
+	sender MetricSender, // *http.Client, теперь здесь передается не конкртеный клиент, а интерфейс
 	chunkSize int,
 	// publicKey *rsa.PublicKey,
 ) *MetricService {
 	return &MetricService{
 		metricAccumulator: metricAccumulator,
-		client: &Client{
-			client:            client,
-			url:               fmt.Sprintf("https://%s/updates/", config.Address),
-			maxRequestRetries: config.MaxRequestRetries,
-			encryptionKey:     config.Key,
-			// publicKey:         publicKey,
-		},
-		rateLimit: config.RateLimit,
-		ChunkSize: chunkSize,
+		sender:            sender,
+		rateLimit:         config.RateLimit,
+		ChunkSize:         chunkSize,
 	}
 }
 
@@ -71,13 +68,11 @@ func (ms *MetricService) SendLoop(ctx context.Context, delay time.Duration, wg *
 		}
 	}()
 
-outer:
 	for {
 		select {
 		case <-ctx.Done(): // <-term:
 			log.Println("Stopping SendLoop")
-			break outer
-			// return ms.finalizeSendLoop(chunks)
+			return ms.finalizeSendLoop(chunks)
 		case <-ticker.C:
 			log.Println("Sending metrics")
 			metrics, err := ms.collectAllMetrics()
@@ -91,21 +86,8 @@ outer:
 			ms.metricAccumulator.Reset()
 		}
 	}
-	log.Println("Sending final metrics")
-	metrics, err := ms.collectAllMetrics()
-	if err != nil {
-		return err
-	}
-	err = ms.sendMultipleMetrics(metrics, chunks)
-	if err != nil {
-		return err // паника после 3ей попытки или в случае не IsRetriableErr
-	}
-	ms.metricAccumulator.Reset()
-
-	return nil
 }
 
-/*
 func (ms *MetricService) finalizeSendLoop(chunks chan []MetricRequest) error {
 	log.Println("Sending final metrics")
 	metrics, err := ms.collectAllMetrics()
@@ -119,7 +101,6 @@ func (ms *MetricService) finalizeSendLoop(chunks chan []MetricRequest) error {
 	ms.metricAccumulator.Reset()
 	return nil
 }
-*/
 
 // worker is our worker, which accepts two channels:
 // jobs - task channel, it is the input data to be processed (входные данные для обработки)
@@ -127,7 +108,7 @@ func (ms *MetricService) finalizeSendLoop(chunks chan []MetricRequest) error {
 func (ms *MetricService) StartWorker(id int, chunks <-chan []MetricRequest, results chan<- bool) {
 	// worker:
 	for chunk := range chunks {
-		err := ms.client.SendMetricsChunk(id, chunk) // SendMetricsChunkEncrypted
+		err := ms.sender.SendMetricsChunk(id, chunk) // SendMetricsChunkEncrypted
 		if err != nil {
 			results <- false
 		} else {
@@ -142,12 +123,11 @@ func (ms *MetricService) RetrieveLoop(ctx context.Context, delay time.Duration, 
 	defer wg.Done()
 	ticker := time.NewTicker(time.Second * delay)
 
-outer:
 	for {
 		select {
 		case <-ctx.Done():
 			log.Println("Stopping RetrieveLoop")
-			break outer // return
+			return
 		case <-ticker.C:
 			log.Println("Retrieving metrics")
 			RetrieveAllMetrics(ms.metricAccumulator)
@@ -160,12 +140,11 @@ func (ms *MetricService) AdditionalRetrieveLoop(ctx context.Context, delay time.
 	defer wg.Done()
 	ticker := time.NewTicker(time.Second * delay)
 
-outer:
 	for {
 		select {
 		case <-ctx.Done():
 			log.Println("Stopping AdditionalRetrieveLoop")
-			break outer // return
+			return
 		case <-ticker.C:
 			log.Println("Retrieving additional metrics")
 			retrieveAdditionalGaugeMetrics(ms.metricAccumulator)

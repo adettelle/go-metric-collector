@@ -4,11 +4,31 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+func TestConfigFromJSON(t *testing.T) {
+	cfg, err := New(true, "./testdata/test.cfg.json")
+	assert.NoError(t, err)
+	expectedCfg := Config{
+		Address:       "localhost:8080",
+		DBParams:      "host=localhost port=5433 user=postgres password=password dbname=metrics-test sslmode=disable",
+		Key:           "",
+		Config:        "./testdata/test.cfg.json",
+		StoragePath:   "/tmp/metrics-db.json",
+		CryptoKey:     "./keys/server_privatekey.pem",
+		Cert:          "",
+		TrustedSubnet: "",
+		GrpcPort:      "",
+		StoreInterval: 1,
+		Restore:       true,
+	}
+	assert.Equal(t, cfg, &expectedCfg)
+}
+
 func TestDefaultConfig(t *testing.T) {
-	cfg, err := New()
+	cfg, err := New(false, "")
 	require.Nil(t, err)
 
 	require.Equal(t, &Config{
@@ -18,6 +38,7 @@ func TestDefaultConfig(t *testing.T) {
 		Restore:       true,
 		DBParams:      "host=localhost port=5433 user=postgres password=password dbname=metrics-test sslmode=disable",
 		Key:           "",
+		GrpcPort:      "3200",
 	}, cfg)
 }
 
@@ -67,18 +88,3 @@ func TestShouldRestoreFileExists(t *testing.T) {
 
 	require.True(t, cfg.ShouldRestore())
 }
-
-/*
-func TestGetStoragePathInexistent(t *testing.T) {
-	dir := os.TempDir()
-	fileName := uuid.New().String()
-
-	fullName := path.Join(dir, fileName)
-
-	result := getStoragePath(&fullName)
-	require.Equal(t, fullName, result)
-
-	_, err := os.Stat(fullName)
-	require.NoError(t, err)
-}
-*/

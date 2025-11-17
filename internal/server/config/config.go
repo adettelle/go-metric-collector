@@ -28,15 +28,13 @@ type Config struct {
 	StoragePath   string `json:"store_file"`     // по умолчанию /tmp/metrics-db.json
 	CryptoKey     string `json:"crypto_key"`     // путь до приватного ключа асимметричного шифрования
 	Cert          string `json:"cert"`           // путь до сертификата шифрования
+	TrustedSubnet string `json:"trusted_subnet"` // строковое представление бесклассовой адресации (CIDR)
+	GrpcPort      string `json:"grpc_port"`      // порт, на котором старует grpc сервер
 	StoreInterval int    `json:"store_interval"` // по умолчанию 300 сек
 	Restore       bool   `json:"restore"`        // по умолчанию true
 }
 
-// приоритет:
-// сначала проверяем флаги и заполняем структуру конфига оттуда
-// потом проверяем переменные окружения и перезаписываем структуру конфига оттуда
-// далее проверяем, если есть json файл и дополняем структкуру конфига оттуда
-func New() (*Config, error) {
+func initFlags() *Config {
 	flagAddr := flag.String("a", "", "Net address localhost:port")                   // "localhost:8080"
 	flagStoreInterval := flag.Int("i", 0, "store metrics to file interval, seconds") // 300
 	flagStoragePath := flag.String("f", "", "file storage path")
@@ -46,6 +44,8 @@ func New() (*Config, error) {
 	flagCryptoKey := flag.String("crypto-key", "", "path to file with private key")
 	flagCert := flag.String("cert", "", "path to file with certificate")
 	flagConfig := flag.String("config", "", "path to file with config parametrs")
+	flagTrustedSubnet := flag.String("t", "", "classless inter-domain routing")
+	flagGrpcPort := flag.String("grpcport", "3200", "grpc server port")
 
 	flag.Parse()
 
@@ -59,6 +59,23 @@ func New() (*Config, error) {
 		CryptoKey:     getCryptoKey(flagCryptoKey),
 		Cert:          getCert(flagCert),
 		Config:        getConfig(flagConfig),
+		TrustedSubnet: getTrustedSubnet(flagTrustedSubnet),
+		GrpcPort:      getGrpcPort(flagGrpcPort),
+	}
+	return &cfg
+}
+
+// приоритет:
+// сначала проверяем флаги и заполняем структуру конфига оттуда
+// потом проверяем переменные окружения и перезаписываем структуру конфига оттуда
+// далее проверяем, если есть json файл и дополняем структкуру конфига оттуда
+func New(ignoreFlags bool, jsonPath string) (*Config, error) {
+	var cfg *Config
+
+	if !ignoreFlags {
+		cfg = initFlags()
+	} else {
+		cfg = &Config{Config: jsonPath}
 	}
 
 	if cfg.Config != "" {
@@ -107,7 +124,7 @@ func New() (*Config, error) {
 	}
 
 	log.Printf("config: %+v\n", cfg)
-	return &cfg, nil
+	return cfg, nil
 }
 
 func getConfig(flagConfig *string) string {
@@ -116,6 +133,22 @@ func getConfig(flagConfig *string) string {
 		return config
 	}
 	return *flagConfig
+}
+
+func getGrpcPort(flagGrpcPort *string) string {
+	grpcPort := os.Getenv("GRPCPORT")
+	if grpcPort != "" {
+		return grpcPort
+	}
+	return *flagGrpcPort
+}
+
+func getTrustedSubnet(flagTrustedSubnet *string) string {
+	trustedSubnet := os.Getenv("TRUSTED_SUBNET")
+	if trustedSubnet != "" {
+		return trustedSubnet
+	}
+	return *flagTrustedSubnet
 }
 
 func getKey(flagKey *string) string {
@@ -224,7 +257,6 @@ func parseIntOrPanic(s string) int {
 }
 
 func (config *Config) ShouldRestore() bool {
-
 	if !config.Restore {
 		return false
 	}

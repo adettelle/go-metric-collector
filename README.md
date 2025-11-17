@@ -36,6 +36,14 @@ git fetch template && git checkout template/main .github
 Для запуска локальных тестов с БД необходимо запустить команду 
 `docker-compose  -f ./test.docker-compose.yaml up -d && go test ./...`
 
+Для запуска тестов с покрытием необходимо запустить команду
+```
+go test -v -coverpkg=./... -coverprofile=profile.cov ./... && \
+    cat profile.cov | grep -v ".pb.go" > cover.out && \
+    go tool cover -func cover.out && go tool cover -html cover.out
+```
+    
+
 ## запуск линтера
 
 В проекте используется специализированный multichecker. 
@@ -48,5 +56,11 @@ git fetch template && git checkout template/main .github
 go run ./cmd/cert/ -p='server' && go run ./cmd/cert/ -p='client'
 
 ## запуск с флагами 
+
 go run ./cmd/server/ -cert './keys/server_cert.pem' -crypto-key './keys/server_privatekey.pem' 
 go run ./cmd/agent/ -client-cert './keys/client_cert.pem' -crypto-key './keys/client_privatekey.pem' -server-cert './keys/server_cert.pem'
+
+## запуск с возможностью использования grpc 
+
+go run ./cmd/server/ -cert './keys/server_cert.pem' -crypto-key './keys/server_privatekey.pem' -grpcport '3200'
+go run ./cmd/agent/ -client-cert './keys/client_cert.pem' -crypto-key './keys/client_privatekey.pem' -server-cert './keys/server_cert.pem' -grpc 'localhost:3200'
